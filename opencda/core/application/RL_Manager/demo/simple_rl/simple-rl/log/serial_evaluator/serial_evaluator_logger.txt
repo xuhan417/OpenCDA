@@ -1,0 +1,1 @@
+[2022-02-14 17:17:35,379][serial_evaluator.py][line: 172][    INFO] [EVALUATOR] env 0 finish episode, final reward: -3.067168089773935, current episode: 1
