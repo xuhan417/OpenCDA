@@ -146,6 +146,8 @@ opencda/evaluation_figures/
 *cache*
 evaluation_outputs/
 docs/tmp.py
+
+/home/xuhan/openCDA-git-archive/OpenCDA/opencda/core/application/RL_Manager/demo/simple_rl
 data_dumping
 video_dumping
 opv2v_data_dumping

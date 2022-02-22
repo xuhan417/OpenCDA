@@ -1,4 +1,25 @@
 from easydict import EasyDict
+'''
+1. [env] defines state, reward, action and episode. It is related to specific learning task. This should be 
+   specified by user and should support agent learns the RL objective. 
+    --> Define state, reward, action and episode in main config, and pass the settings to this script. 
+
+next:     
+*** 2. [env.wrapper] defines the simulation scenario. Simulation benchmarks are listed in ALLSUITE, this config only choose 
+   "random (pick benchmark setting randomly)" vs "in order (use benchmark setting one by one)" 
+    --> all the benchmark should use OpenCDA to replace
+*** Action --> 
+    1. behavior
+    2. trajectory (Lyft --> output trajectory)
+    
+    3. input [dict]  ---->  output [dict]  (refer to openCOOD)
+    
+    
+3. [Server] list the Carla port for all envs. 
+    --> This should also be defined in the main script and pass to this script.
+4. [policy] defines learning parameters/hyper-parameters. 
+    --> This should also be defined in the main script and pass to this script.
+'''
 
 dqn_config = dict(
     exp_name='dqn21_bev32_buf2e5_lr1e4_bs128_ns3000_update4_train_ft',

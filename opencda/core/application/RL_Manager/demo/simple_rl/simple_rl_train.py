@@ -77,7 +77,7 @@ def get_cls(spec):
 def main(args, seed=0):
     # read config from file and merge with command line args and default config
     cfg = get_cfg(args)
-    tcp_list = parse_carla_tcp(cfg.server)
+    tcp_list = parse_carla_tcp(cfg.server) # carla_ports=[9000, 9004, 2] --> port: 9000 and 9002
     collector_env_num, evaluator_env_num = cfg.env.collector_env_num, cfg.env.evaluator_env_num
     assert len(tcp_list) >= collector_env_num + evaluator_env_num, \
         "Carla server not enough! Need {} servers but only found {}.".format(
@@ -86,7 +86,15 @@ def main(args, seed=0):
 
     # init collector's env and evaluator's env (both could be multiple carla servers)
     '''
-    Note:          
+    Note:     
+    def wrapped_discrete_env(env_cfg, wrapper_cfg, host, port, tm_port=None):
+    env = SimpleCarlaEnv(env_cfg, host, port, tm_port)
+    # return BenchmarkEnvWrapper(env, wrapper_cfg)
+    # return DriveEnvWrapper(env, wrapper_cfg)
+    return env
+    
+    tcp_list --> [(host, port1), (host, port2), (host, port3) ... ]
+         
     wrapper=dict(
             # Collect and eval suites for training
             collect=dict(suite='train_ft', ),
@@ -98,10 +106,13 @@ def main(args, seed=0):
                 return BenchmarkEnvWrapper(DiscreteWrapper(env), wrapper_cfg)
                 *** wrapper_cfg was used by BenchmarkEnvWrapper
     '''
+    # init collector with collect configs (cfg.env.manager.collect)
     collector_env = SyncSubprocessEnvManager(
+        # generate wrapped_env for each collector env. Reuse config.env and wrapper.collect, loop through port.
         env_fn=[partial(wrapped_discrete_env, cfg.env, cfg.env.wrapper.collect, *tcp_list[i]) for i in range(collector_env_num)],
         cfg=cfg.env.manager.collect,
     )
+    # init evaluator with evaluate configs (cfg.env.manager.eval)
     evaluate_env = BaseEnvManager(
         env_fn=[partial(wrapped_discrete_env, cfg.env, cfg.env.wrapper.eval, *tcp_list[collector_env_num + i]) for i in range(evaluator_env_num)],
         cfg=cfg.env.manager.eval,
