@@ -17,6 +17,8 @@ from opencda.core.sensing.localization.localization_manager \
     import LocalizationManager
 from opencda.core.sensing.perception.perception_manager \
     import PerceptionManager
+from opencda.core.application.Cooperative_perception.cooperative_perception_manager \
+    import CoopPerceptionManager
 from opencda.core.plan.behavior_agent \
     import BehaviorAgent
 from opencda.core.ml_libs.rl.planner.rl_behavior_agent \
@@ -101,10 +103,17 @@ class VehicleManager(object):
         # localization module
         self.localizer = LocalizationManager(
             vehicle, sensing_config['localization'], carla_map)
+
         # perception module
-        self.perception_manager = PerceptionManager(
-            vehicle, sensing_config['perception'], cav_world,
-            data_dumping)
+        if 'coop' in sensing_config:
+            self.perception_manager = CoopPerceptionManager(
+                vehicle, sensing_config['perception'], cav_world,
+                data_dumping)
+        else: # basic
+            self.perception_manager = PerceptionManager(
+                vehicle, sensing_config['perception'], cav_world,
+                data_dumping)
+
         # map manager
         self.map_manager = MapManager(vehicle,
                                       carla_map,
