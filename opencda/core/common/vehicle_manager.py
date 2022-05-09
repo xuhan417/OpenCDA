@@ -96,6 +96,7 @@ class VehicleManager(object):
         behavior_config = config_yaml['behavior']
         control_config = config_yaml['controller']
         v2x_config = config_yaml['v2x']
+        self.sensing_config = sensing_config
 
         # v2x module
         self.v2x_manager = V2XManager(cav_world, v2x_config, self.vid)
@@ -196,6 +197,12 @@ class VehicleManager(object):
         # update ego position and speed to v2x manager,
         # and then v2x manager will search the nearby cavs
         self.v2x_manager.update_info(ego_pos, ego_spd)
+
+        # use v2v detection
+        if 'v2v' in self.sensing_config:
+            objects_v2v = self.v2x_manager.v2v_detect()
+            # todo: need to check if this is correct way to add all objects togethers
+            objects.update(objects_v2v)
 
         self.agent.update_information(ego_pos, ego_spd, objects)
         # pass position and speed info to controller

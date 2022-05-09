@@ -167,6 +167,23 @@ class V2XManager(object):
 
             if distance < self.communication_range:
                 self.cav_nearby.update({vid: vm})
+
+    """
+    -----------------------------------------------------------
+                 Below is v2v detection related 
+    -----------------------------------------------------------
+    """
+
+    def v2v_detect(self):
+        objects_v2v = {}
+        for vim,vm in self.cav_nearby.items():
+            ego_pos = vm.localizer.get_ego_pos()
+            objects = vm.perception_manager.detect(ego_pos)
+
+            # todo: need to check if this step is correct
+            objects_v2v.update(objects)
+        # todo: need to check if this return is in correct format
+        return objects_v2v
     """
     -----------------------------------------------------------
                  Below is platooning related 
