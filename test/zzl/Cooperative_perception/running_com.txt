@@ -1,0 +1,7 @@
+example com:
+
+CUDA_VISIBLE_DEVICES=3 python -m opencood.tools.inference --model_dir opencood/logs/infra_point_pillar_intermediate_new_2022_04_26_14_45_03/ --fusion_method intermediate 
+
+my com:
+
+python inference.py --model_dir model_dir/v2vnet/ --fusion_method intermediate 
