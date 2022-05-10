@@ -25,6 +25,7 @@ from opencda.core.ml_libs.rl.planner.rl_behavior_agent \
     import RLBehaviorAgent
 from opencda.core.map.map_manager import MapManager
 from opencda.core.common.data_dumper import DataDumper
+from opencda.core.common.misc import update_dict_list
 
 class VehicleManager(object):
     """
@@ -201,8 +202,9 @@ class VehicleManager(object):
         # use v2v detection
         if 'v2v' in self.sensing_config:
             objects_v2v = self.v2x_manager.v2v_detect()
-            # todo: need to check if this is correct way to add all objects togethers
-            objects.update(objects_v2v)
+            # todo: the same vehicle on vehicle list is not merged
+            objects = update_dict_list(objects,objects_v2v, "vehicles")
+            objects = update_dict_list(objects,objects_v2v, "traffic_lights")
 
         self.agent.update_information(ego_pos, ego_spd, objects)
         # pass position and speed info to controller

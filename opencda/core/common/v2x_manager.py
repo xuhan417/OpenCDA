@@ -14,7 +14,7 @@ import numpy as np
 from opencda.core.application.platooning.platooning_plugin \
     import PlatooningPlugin
 from opencda.core.common.misc import compute_distance
-
+from opencda.core.common.misc import update_dict_list
 
 class V2XManager(object):
     """
@@ -175,14 +175,15 @@ class V2XManager(object):
     """
 
     def v2v_detect(self):
-        objects_v2v = {}
+        objects_v2v = {"vehicles": [], "traffic_lights": []}
         for vim,vm in self.cav_nearby.items():
             ego_pos = vm.localizer.get_ego_pos()
             objects = vm.perception_manager.detect(ego_pos)
 
-            # todo: need to check if this step is correct
-            objects_v2v.update(objects)
-        # todo: need to check if this return is in correct format
+            # simply combine all detected vehicles and traffic_lights together
+            # todo: the same vehicle on vehicle list is not merged
+            objects_v2v = update_dict_list(objects_v2v, objects, "vehicles")
+            objects_v2v = update_dict_list(objects_v2v, objects, "traffic_lights")
         return objects_v2v
     """
     -----------------------------------------------------------

@@ -261,3 +261,10 @@ def get_speed_sumo(sumo2carla_ids, carla_id):
             return vehicle_speed
 
     return -1
+
+def update_dict_list(objects_all, objects, key):
+    item_list = objects_all[key]
+    item_list_cp = objects[key]
+    item_list.extend(item_list_cp)
+    objects_all.update({key: item_list})
+    return objects_all
