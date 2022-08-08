@@ -2122,3 +2122,687 @@ DQNRLModel(
     )
   )
 )
+[2022-07-17 19:05:25,245][base_learner.py][line: 333][    INFO] [RANK0]: DI-engine DRL Policy
+DQNRLModel(
+  (_encoder): BEVSpeedConvEncoder(
+    (_relu): ReLU()
+    (_model): Sequential(
+      (0): Conv2d(5, 64, kernel_size=(3, 3), stride=(2, 2))
+      (1): ReLU()
+      (2): Conv2d(64, 128, kernel_size=(3, 3), stride=(2, 2))
+      (3): ReLU()
+      (4): Conv2d(128, 256, kernel_size=(3, 3), stride=(2, 2))
+      (5): ReLU()
+      (6): Flatten(start_dim=1, end_dim=-1)
+    )
+    (_mid): Linear(in_features=2304, out_features=256, bias=True)
+  )
+  (_head): DuelingHead(
+    (A): Sequential(
+      (0): Sequential(
+        (0): Linear(in_features=512, out_features=512, bias=True)
+        (1): ReLU()
+      )
+      (1): Sequential(
+        (0): Linear(in_features=512, out_features=9, bias=True)
+      )
+    )
+    (V): Sequential(
+      (0): Sequential(
+        (0): Linear(in_features=512, out_features=512, bias=True)
+        (1): ReLU()
+      )
+      (1): Sequential(
+        (0): Linear(in_features=512, out_features=1, bias=True)
+      )
+    )
+  )
+)
+[2022-07-17 19:06:28,091][base_learner.py][line: 333][    INFO] [RANK0]: DI-engine DRL Policy
+DQNRLModel(
+  (_encoder): BEVSpeedConvEncoder(
+    (_relu): ReLU()
+    (_model): Sequential(
+      (0): Conv2d(5, 64, kernel_size=(3, 3), stride=(2, 2))
+      (1): ReLU()
+      (2): Conv2d(64, 128, kernel_size=(3, 3), stride=(2, 2))
+      (3): ReLU()
+      (4): Conv2d(128, 256, kernel_size=(3, 3), stride=(2, 2))
+      (5): ReLU()
+      (6): Flatten(start_dim=1, end_dim=-1)
+    )
+    (_mid): Linear(in_features=2304, out_features=256, bias=True)
+  )
+  (_head): DuelingHead(
+    (A): Sequential(
+      (0): Sequential(
+        (0): Linear(in_features=512, out_features=512, bias=True)
+        (1): ReLU()
+      )
+      (1): Sequential(
+        (0): Linear(in_features=512, out_features=9, bias=True)
+      )
+    )
+    (V): Sequential(
+      (0): Sequential(
+        (0): Linear(in_features=512, out_features=512, bias=True)
+        (1): ReLU()
+      )
+      (1): Sequential(
+        (0): Linear(in_features=512, out_features=1, bias=True)
+      )
+    )
+  )
+)
+[2022-07-17 19:11:37,615][base_learner.py][line: 333][    INFO] [RANK0]: DI-engine DRL Policy
+DQNRLModel(
+  (_encoder): BEVSpeedConvEncoder(
+    (_relu): ReLU()
+    (_model): Sequential(
+      (0): Conv2d(5, 64, kernel_size=(3, 3), stride=(2, 2))
+      (1): ReLU()
+      (2): Conv2d(64, 128, kernel_size=(3, 3), stride=(2, 2))
+      (3): ReLU()
+      (4): Conv2d(128, 256, kernel_size=(3, 3), stride=(2, 2))
+      (5): ReLU()
+      (6): Flatten(start_dim=1, end_dim=-1)
+    )
+    (_mid): Linear(in_features=2304, out_features=256, bias=True)
+  )
+  (_head): DuelingHead(
+    (A): Sequential(
+      (0): Sequential(
+        (0): Linear(in_features=512, out_features=512, bias=True)
+        (1): ReLU()
+      )
+      (1): Sequential(
+        (0): Linear(in_features=512, out_features=9, bias=True)
+      )
+    )
+    (V): Sequential(
+      (0): Sequential(
+        (0): Linear(in_features=512, out_features=512, bias=True)
+        (1): ReLU()
+      )
+      (1): Sequential(
+        (0): Linear(in_features=512, out_features=1, bias=True)
+      )
+    )
+  )
+)
+[2022-07-17 23:42:32,639][base_learner.py][line: 333][    INFO] [RANK0]: DI-engine DRL Policy
+DQNRLModel(
+  (_encoder): BEVSpeedConvEncoder(
+    (_relu): ReLU()
+    (_model): Sequential(
+      (0): Conv2d(5, 64, kernel_size=(3, 3), stride=(2, 2))
+      (1): ReLU()
+      (2): Conv2d(64, 128, kernel_size=(3, 3), stride=(2, 2))
+      (3): ReLU()
+      (4): Conv2d(128, 256, kernel_size=(3, 3), stride=(2, 2))
+      (5): ReLU()
+      (6): Flatten(start_dim=1, end_dim=-1)
+    )
+    (_mid): Linear(in_features=2304, out_features=256, bias=True)
+  )
+  (_head): DuelingHead(
+    (A): Sequential(
+      (0): Sequential(
+        (0): Linear(in_features=512, out_features=512, bias=True)
+        (1): ReLU()
+      )
+      (1): Sequential(
+        (0): Linear(in_features=512, out_features=9, bias=True)
+      )
+    )
+    (V): Sequential(
+      (0): Sequential(
+        (0): Linear(in_features=512, out_features=512, bias=True)
+        (1): ReLU()
+      )
+      (1): Sequential(
+        (0): Linear(in_features=512, out_features=1, bias=True)
+      )
+    )
+  )
+)
+[2022-07-17 23:50:27,210][base_learner.py][line: 333][    INFO] [RANK0]: DI-engine DRL Policy
+DQNRLModel(
+  (_encoder): BEVSpeedConvEncoder(
+    (_relu): ReLU()
+    (_model): Sequential(
+      (0): Conv2d(5, 64, kernel_size=(3, 3), stride=(2, 2))
+      (1): ReLU()
+      (2): Conv2d(64, 128, kernel_size=(3, 3), stride=(2, 2))
+      (3): ReLU()
+      (4): Conv2d(128, 256, kernel_size=(3, 3), stride=(2, 2))
+      (5): ReLU()
+      (6): Flatten(start_dim=1, end_dim=-1)
+    )
+    (_mid): Linear(in_features=2304, out_features=256, bias=True)
+  )
+  (_head): DuelingHead(
+    (A): Sequential(
+      (0): Sequential(
+        (0): Linear(in_features=512, out_features=512, bias=True)
+        (1): ReLU()
+      )
+      (1): Sequential(
+        (0): Linear(in_features=512, out_features=9, bias=True)
+      )
+    )
+    (V): Sequential(
+      (0): Sequential(
+        (0): Linear(in_features=512, out_features=512, bias=True)
+        (1): ReLU()
+      )
+      (1): Sequential(
+        (0): Linear(in_features=512, out_features=1, bias=True)
+      )
+    )
+  )
+)
+[2022-07-18 00:00:17,377][base_learner.py][line: 333][    INFO] [RANK0]: DI-engine DRL Policy
+DQNRLModel(
+  (_encoder): BEVSpeedConvEncoder(
+    (_relu): ReLU()
+    (_model): Sequential(
+      (0): Conv2d(5, 64, kernel_size=(3, 3), stride=(2, 2))
+      (1): ReLU()
+      (2): Conv2d(64, 128, kernel_size=(3, 3), stride=(2, 2))
+      (3): ReLU()
+      (4): Conv2d(128, 256, kernel_size=(3, 3), stride=(2, 2))
+      (5): ReLU()
+      (6): Flatten(start_dim=1, end_dim=-1)
+    )
+    (_mid): Linear(in_features=2304, out_features=256, bias=True)
+  )
+  (_head): DuelingHead(
+    (A): Sequential(
+      (0): Sequential(
+        (0): Linear(in_features=512, out_features=512, bias=True)
+        (1): ReLU()
+      )
+      (1): Sequential(
+        (0): Linear(in_features=512, out_features=9, bias=True)
+      )
+    )
+    (V): Sequential(
+      (0): Sequential(
+        (0): Linear(in_features=512, out_features=512, bias=True)
+        (1): ReLU()
+      )
+      (1): Sequential(
+        (0): Linear(in_features=512, out_features=1, bias=True)
+      )
+    )
+  )
+)
+[2022-07-18 00:33:13,082][base_learner.py][line: 333][    INFO] [RANK0]: DI-engine DRL Policy
+DQNRLModel(
+  (_encoder): BEVSpeedConvEncoder(
+    (_relu): ReLU()
+    (_model): Sequential(
+      (0): Conv2d(5, 64, kernel_size=(3, 3), stride=(2, 2))
+      (1): ReLU()
+      (2): Conv2d(64, 128, kernel_size=(3, 3), stride=(2, 2))
+      (3): ReLU()
+      (4): Conv2d(128, 256, kernel_size=(3, 3), stride=(2, 2))
+      (5): ReLU()
+      (6): Flatten(start_dim=1, end_dim=-1)
+    )
+    (_mid): Linear(in_features=2304, out_features=256, bias=True)
+  )
+  (_head): DuelingHead(
+    (A): Sequential(
+      (0): Sequential(
+        (0): Linear(in_features=512, out_features=512, bias=True)
+        (1): ReLU()
+      )
+      (1): Sequential(
+        (0): Linear(in_features=512, out_features=9, bias=True)
+      )
+    )
+    (V): Sequential(
+      (0): Sequential(
+        (0): Linear(in_features=512, out_features=512, bias=True)
+        (1): ReLU()
+      )
+      (1): Sequential(
+        (0): Linear(in_features=512, out_features=1, bias=True)
+      )
+    )
+  )
+)
+[2022-07-18 00:35:31,877][base_learner.py][line: 333][    INFO] [RANK0]: DI-engine DRL Policy
+DQNRLModel(
+  (_encoder): BEVSpeedConvEncoder(
+    (_relu): ReLU()
+    (_model): Sequential(
+      (0): Conv2d(5, 64, kernel_size=(3, 3), stride=(2, 2))
+      (1): ReLU()
+      (2): Conv2d(64, 128, kernel_size=(3, 3), stride=(2, 2))
+      (3): ReLU()
+      (4): Conv2d(128, 256, kernel_size=(3, 3), stride=(2, 2))
+      (5): ReLU()
+      (6): Flatten(start_dim=1, end_dim=-1)
+    )
+    (_mid): Linear(in_features=2304, out_features=256, bias=True)
+  )
+  (_head): DuelingHead(
+    (A): Sequential(
+      (0): Sequential(
+        (0): Linear(in_features=512, out_features=512, bias=True)
+        (1): ReLU()
+      )
+      (1): Sequential(
+        (0): Linear(in_features=512, out_features=9, bias=True)
+      )
+    )
+    (V): Sequential(
+      (0): Sequential(
+        (0): Linear(in_features=512, out_features=512, bias=True)
+        (1): ReLU()
+      )
+      (1): Sequential(
+        (0): Linear(in_features=512, out_features=1, bias=True)
+      )
+    )
+  )
+)
+[2022-07-18 00:36:28,571][base_learner.py][line: 333][    INFO] [RANK0]: DI-engine DRL Policy
+DQNRLModel(
+  (_encoder): BEVSpeedConvEncoder(
+    (_relu): ReLU()
+    (_model): Sequential(
+      (0): Conv2d(5, 64, kernel_size=(3, 3), stride=(2, 2))
+      (1): ReLU()
+      (2): Conv2d(64, 128, kernel_size=(3, 3), stride=(2, 2))
+      (3): ReLU()
+      (4): Conv2d(128, 256, kernel_size=(3, 3), stride=(2, 2))
+      (5): ReLU()
+      (6): Flatten(start_dim=1, end_dim=-1)
+    )
+    (_mid): Linear(in_features=2304, out_features=256, bias=True)
+  )
+  (_head): DuelingHead(
+    (A): Sequential(
+      (0): Sequential(
+        (0): Linear(in_features=512, out_features=512, bias=True)
+        (1): ReLU()
+      )
+      (1): Sequential(
+        (0): Linear(in_features=512, out_features=9, bias=True)
+      )
+    )
+    (V): Sequential(
+      (0): Sequential(
+        (0): Linear(in_features=512, out_features=512, bias=True)
+        (1): ReLU()
+      )
+      (1): Sequential(
+        (0): Linear(in_features=512, out_features=1, bias=True)
+      )
+    )
+  )
+)
+[2022-07-19 22:10:42,514][base_learner.py][line: 333][    INFO] [RANK0]: DI-engine DRL Policy
+DQNRLModel(
+  (_encoder): BEVSpeedConvEncoder(
+    (_relu): ReLU()
+    (_model): Sequential(
+      (0): Conv2d(5, 64, kernel_size=(3, 3), stride=(2, 2))
+      (1): ReLU()
+      (2): Conv2d(64, 128, kernel_size=(3, 3), stride=(2, 2))
+      (3): ReLU()
+      (4): Conv2d(128, 256, kernel_size=(3, 3), stride=(2, 2))
+      (5): ReLU()
+      (6): Flatten(start_dim=1, end_dim=-1)
+    )
+    (_mid): Linear(in_features=2304, out_features=256, bias=True)
+  )
+  (_head): DuelingHead(
+    (A): Sequential(
+      (0): Sequential(
+        (0): Linear(in_features=512, out_features=512, bias=True)
+        (1): ReLU()
+      )
+      (1): Sequential(
+        (0): Linear(in_features=512, out_features=9, bias=True)
+      )
+    )
+    (V): Sequential(
+      (0): Sequential(
+        (0): Linear(in_features=512, out_features=512, bias=True)
+        (1): ReLU()
+      )
+      (1): Sequential(
+        (0): Linear(in_features=512, out_features=1, bias=True)
+      )
+    )
+  )
+)
+[2022-07-22 12:22:17,214][base_learner.py][line: 333][    INFO] [RANK0]: DI-engine DRL Policy
+DQNRLModel(
+  (_encoder): BEVSpeedConvEncoder(
+    (_relu): ReLU()
+    (_model): Sequential(
+      (0): Conv2d(5, 64, kernel_size=(3, 3), stride=(2, 2))
+      (1): ReLU()
+      (2): Conv2d(64, 128, kernel_size=(3, 3), stride=(2, 2))
+      (3): ReLU()
+      (4): Conv2d(128, 256, kernel_size=(3, 3), stride=(2, 2))
+      (5): ReLU()
+      (6): Flatten(start_dim=1, end_dim=-1)
+    )
+    (_mid): Linear(in_features=2304, out_features=256, bias=True)
+  )
+  (_head): DuelingHead(
+    (A): Sequential(
+      (0): Sequential(
+        (0): Linear(in_features=512, out_features=512, bias=True)
+        (1): ReLU()
+      )
+      (1): Sequential(
+        (0): Linear(in_features=512, out_features=9, bias=True)
+      )
+    )
+    (V): Sequential(
+      (0): Sequential(
+        (0): Linear(in_features=512, out_features=512, bias=True)
+        (1): ReLU()
+      )
+      (1): Sequential(
+        (0): Linear(in_features=512, out_features=1, bias=True)
+      )
+    )
+  )
+)
+[2022-07-22 12:31:06,429][base_learner.py][line: 333][    INFO] [RANK0]: DI-engine DRL Policy
+DQNRLModel(
+  (_encoder): BEVSpeedConvEncoder(
+    (_relu): ReLU()
+    (_model): Sequential(
+      (0): Conv2d(5, 64, kernel_size=(3, 3), stride=(2, 2))
+      (1): ReLU()
+      (2): Conv2d(64, 128, kernel_size=(3, 3), stride=(2, 2))
+      (3): ReLU()
+      (4): Conv2d(128, 256, kernel_size=(3, 3), stride=(2, 2))
+      (5): ReLU()
+      (6): Flatten(start_dim=1, end_dim=-1)
+    )
+    (_mid): Linear(in_features=2304, out_features=256, bias=True)
+  )
+  (_head): DuelingHead(
+    (A): Sequential(
+      (0): Sequential(
+        (0): Linear(in_features=512, out_features=512, bias=True)
+        (1): ReLU()
+      )
+      (1): Sequential(
+        (0): Linear(in_features=512, out_features=9, bias=True)
+      )
+    )
+    (V): Sequential(
+      (0): Sequential(
+        (0): Linear(in_features=512, out_features=512, bias=True)
+        (1): ReLU()
+      )
+      (1): Sequential(
+        (0): Linear(in_features=512, out_features=1, bias=True)
+      )
+    )
+  )
+)
+[2022-07-22 12:31:29,945][base_learner.py][line: 333][    INFO] [RANK0]: DI-engine DRL Policy
+DQNRLModel(
+  (_encoder): BEVSpeedConvEncoder(
+    (_relu): ReLU()
+    (_model): Sequential(
+      (0): Conv2d(5, 64, kernel_size=(3, 3), stride=(2, 2))
+      (1): ReLU()
+      (2): Conv2d(64, 128, kernel_size=(3, 3), stride=(2, 2))
+      (3): ReLU()
+      (4): Conv2d(128, 256, kernel_size=(3, 3), stride=(2, 2))
+      (5): ReLU()
+      (6): Flatten(start_dim=1, end_dim=-1)
+    )
+    (_mid): Linear(in_features=2304, out_features=256, bias=True)
+  )
+  (_head): DuelingHead(
+    (A): Sequential(
+      (0): Sequential(
+        (0): Linear(in_features=512, out_features=512, bias=True)
+        (1): ReLU()
+      )
+      (1): Sequential(
+        (0): Linear(in_features=512, out_features=9, bias=True)
+      )
+    )
+    (V): Sequential(
+      (0): Sequential(
+        (0): Linear(in_features=512, out_features=512, bias=True)
+        (1): ReLU()
+      )
+      (1): Sequential(
+        (0): Linear(in_features=512, out_features=1, bias=True)
+      )
+    )
+  )
+)
+[2022-07-22 12:33:02,707][base_learner.py][line: 333][    INFO] [RANK0]: DI-engine DRL Policy
+DQNRLModel(
+  (_encoder): BEVSpeedConvEncoder(
+    (_relu): ReLU()
+    (_model): Sequential(
+      (0): Conv2d(5, 64, kernel_size=(3, 3), stride=(2, 2))
+      (1): ReLU()
+      (2): Conv2d(64, 128, kernel_size=(3, 3), stride=(2, 2))
+      (3): ReLU()
+      (4): Conv2d(128, 256, kernel_size=(3, 3), stride=(2, 2))
+      (5): ReLU()
+      (6): Flatten(start_dim=1, end_dim=-1)
+    )
+    (_mid): Linear(in_features=2304, out_features=256, bias=True)
+  )
+  (_head): DuelingHead(
+    (A): Sequential(
+      (0): Sequential(
+        (0): Linear(in_features=512, out_features=512, bias=True)
+        (1): ReLU()
+      )
+      (1): Sequential(
+        (0): Linear(in_features=512, out_features=9, bias=True)
+      )
+    )
+    (V): Sequential(
+      (0): Sequential(
+        (0): Linear(in_features=512, out_features=512, bias=True)
+        (1): ReLU()
+      )
+      (1): Sequential(
+        (0): Linear(in_features=512, out_features=1, bias=True)
+      )
+    )
+  )
+)
+[2022-07-22 12:33:42,091][base_learner.py][line: 333][    INFO] [RANK0]: DI-engine DRL Policy
+DQNRLModel(
+  (_encoder): BEVSpeedConvEncoder(
+    (_relu): ReLU()
+    (_model): Sequential(
+      (0): Conv2d(5, 64, kernel_size=(3, 3), stride=(2, 2))
+      (1): ReLU()
+      (2): Conv2d(64, 128, kernel_size=(3, 3), stride=(2, 2))
+      (3): ReLU()
+      (4): Conv2d(128, 256, kernel_size=(3, 3), stride=(2, 2))
+      (5): ReLU()
+      (6): Flatten(start_dim=1, end_dim=-1)
+    )
+    (_mid): Linear(in_features=2304, out_features=256, bias=True)
+  )
+  (_head): DuelingHead(
+    (A): Sequential(
+      (0): Sequential(
+        (0): Linear(in_features=512, out_features=512, bias=True)
+        (1): ReLU()
+      )
+      (1): Sequential(
+        (0): Linear(in_features=512, out_features=9, bias=True)
+      )
+    )
+    (V): Sequential(
+      (0): Sequential(
+        (0): Linear(in_features=512, out_features=512, bias=True)
+        (1): ReLU()
+      )
+      (1): Sequential(
+        (0): Linear(in_features=512, out_features=1, bias=True)
+      )
+    )
+  )
+)
+[2022-07-22 12:34:39,491][base_learner.py][line: 333][    INFO] [RANK0]: DI-engine DRL Policy
+DQNRLModel(
+  (_encoder): BEVSpeedConvEncoder(
+    (_relu): ReLU()
+    (_model): Sequential(
+      (0): Conv2d(5, 64, kernel_size=(3, 3), stride=(2, 2))
+      (1): ReLU()
+      (2): Conv2d(64, 128, kernel_size=(3, 3), stride=(2, 2))
+      (3): ReLU()
+      (4): Conv2d(128, 256, kernel_size=(3, 3), stride=(2, 2))
+      (5): ReLU()
+      (6): Flatten(start_dim=1, end_dim=-1)
+    )
+    (_mid): Linear(in_features=2304, out_features=256, bias=True)
+  )
+  (_head): DuelingHead(
+    (A): Sequential(
+      (0): Sequential(
+        (0): Linear(in_features=512, out_features=512, bias=True)
+        (1): ReLU()
+      )
+      (1): Sequential(
+        (0): Linear(in_features=512, out_features=9, bias=True)
+      )
+    )
+    (V): Sequential(
+      (0): Sequential(
+        (0): Linear(in_features=512, out_features=512, bias=True)
+        (1): ReLU()
+      )
+      (1): Sequential(
+        (0): Linear(in_features=512, out_features=1, bias=True)
+      )
+    )
+  )
+)
+[2022-07-22 12:35:48,646][base_learner.py][line: 333][    INFO] [RANK0]: DI-engine DRL Policy
+DQNRLModel(
+  (_encoder): BEVSpeedConvEncoder(
+    (_relu): ReLU()
+    (_model): Sequential(
+      (0): Conv2d(5, 64, kernel_size=(3, 3), stride=(2, 2))
+      (1): ReLU()
+      (2): Conv2d(64, 128, kernel_size=(3, 3), stride=(2, 2))
+      (3): ReLU()
+      (4): Conv2d(128, 256, kernel_size=(3, 3), stride=(2, 2))
+      (5): ReLU()
+      (6): Flatten(start_dim=1, end_dim=-1)
+    )
+    (_mid): Linear(in_features=2304, out_features=256, bias=True)
+  )
+  (_head): DuelingHead(
+    (A): Sequential(
+      (0): Sequential(
+        (0): Linear(in_features=512, out_features=512, bias=True)
+        (1): ReLU()
+      )
+      (1): Sequential(
+        (0): Linear(in_features=512, out_features=9, bias=True)
+      )
+    )
+    (V): Sequential(
+      (0): Sequential(
+        (0): Linear(in_features=512, out_features=512, bias=True)
+        (1): ReLU()
+      )
+      (1): Sequential(
+        (0): Linear(in_features=512, out_features=1, bias=True)
+      )
+    )
+  )
+)
+[2022-07-22 12:36:26,049][base_learner.py][line: 333][    INFO] [RANK0]: DI-engine DRL Policy
+DQNRLModel(
+  (_encoder): BEVSpeedConvEncoder(
+    (_relu): ReLU()
+    (_model): Sequential(
+      (0): Conv2d(5, 64, kernel_size=(3, 3), stride=(2, 2))
+      (1): ReLU()
+      (2): Conv2d(64, 128, kernel_size=(3, 3), stride=(2, 2))
+      (3): ReLU()
+      (4): Conv2d(128, 256, kernel_size=(3, 3), stride=(2, 2))
+      (5): ReLU()
+      (6): Flatten(start_dim=1, end_dim=-1)
+    )
+    (_mid): Linear(in_features=2304, out_features=256, bias=True)
+  )
+  (_head): DuelingHead(
+    (A): Sequential(
+      (0): Sequential(
+        (0): Linear(in_features=512, out_features=512, bias=True)
+        (1): ReLU()
+      )
+      (1): Sequential(
+        (0): Linear(in_features=512, out_features=9, bias=True)
+      )
+    )
+    (V): Sequential(
+      (0): Sequential(
+        (0): Linear(in_features=512, out_features=512, bias=True)
+        (1): ReLU()
+      )
+      (1): Sequential(
+        (0): Linear(in_features=512, out_features=1, bias=True)
+      )
+    )
+  )
+)
+[2022-07-22 12:36:55,914][base_learner.py][line: 333][    INFO] [RANK0]: DI-engine DRL Policy
+DQNRLModel(
+  (_encoder): BEVSpeedConvEncoder(
+    (_relu): ReLU()
+    (_model): Sequential(
+      (0): Conv2d(5, 64, kernel_size=(3, 3), stride=(2, 2))
+      (1): ReLU()
+      (2): Conv2d(64, 128, kernel_size=(3, 3), stride=(2, 2))
+      (3): ReLU()
+      (4): Conv2d(128, 256, kernel_size=(3, 3), stride=(2, 2))
+      (5): ReLU()
+      (6): Flatten(start_dim=1, end_dim=-1)
+    )
+    (_mid): Linear(in_features=2304, out_features=256, bias=True)
+  )
+  (_head): DuelingHead(
+    (A): Sequential(
+      (0): Sequential(
+        (0): Linear(in_features=512, out_features=512, bias=True)
+        (1): ReLU()
+      )
+      (1): Sequential(
+        (0): Linear(in_features=512, out_features=9, bias=True)
+      )
+    )
+    (V): Sequential(
+      (0): Sequential(
+        (0): Linear(in_features=512, out_features=512, bias=True)
+        (1): ReLU()
+      )
+      (1): Sequential(
+        (0): Linear(in_features=512, out_features=1, bias=True)
+      )
+    )
+  )
+)

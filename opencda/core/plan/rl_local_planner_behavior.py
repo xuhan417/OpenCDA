@@ -118,7 +118,8 @@ class RLLocalPlanner(LocalPlanner):
         current_yaw = self._ego_pos.rotation.yaw
 
         # retrieve the corresponding waypoint of the current location
-        current_wpt = self._map.get_waypoint(current_location).next(1)[0]
+        # current_wpt = self._map.get_waypoint(current_location).next(1)[0]
+        current_wpt = self._map.get_waypoint(current_location)
         end_wpt = self._waypoint_buffer[-1][0]
 
         # retrieve past waypoint
@@ -149,7 +150,7 @@ class RLLocalPlanner(LocalPlanner):
 
         # debug stream
         print('Debug @ rl_planner, mistgen: ...')
-        print('The current init points are: ' + str(waypoint_ori))
+        print('The current planned points are: ' + str(waypoint_ori))
         print('--------------------------------------------------')
 
         my_mist_gen = mist_generator()

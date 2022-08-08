@@ -141,7 +141,8 @@ class RLBehaviorAgent(BehaviorAgent):
             target_speed,
             rl_action_dt):
         """
-        This method  the destination of the ego vehicle based on RL agent's output.
+        This method set the destination and the current navigation plan of the ego vehicle
+        based on RL agent's output.
         With the current parameters, the rl_local_planner will compute the minimum snap
         trajectory using mistGen. The parameters of this function will be updated at
         each RL step.

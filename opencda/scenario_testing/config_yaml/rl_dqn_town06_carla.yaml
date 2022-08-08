@@ -92,7 +92,7 @@ vehicle_base: &vehicle_base
     tailgate_speed: 34 # when a vehicles needs to be close to another vehicle asap
     speed_lim_dist: 3 # max_speed - speed_lim_dist = target speed
     speed_decrease: 15 # used in car following mode to decrease speed for distance keeping
-    safety_time: 4 # ttc safety thresholding for decreasing speed
+    safety_time: 3 # ttc safety thresholding for decreasing speed
     emergency_param: 0.4 # used to identify whether a emergency stop needed
     ignore_traffic_light: true # whether to ignore traffic light
     overtake_allowed: false # whether overtake allowed, typically false for platoon leader
@@ -100,7 +100,7 @@ vehicle_base: &vehicle_base
     overtake_counter_recover: 35 # the vehicle can not do another overtake during next certain steps
     sample_resolution: 4.5 # the unit distance between two adjacent waypoints in meter
     local_planner: &base_local_planner # trajectory planning related
-      buffer_size: 4 # waypoint buffer size
+      buffer_size: 1 #4 # waypoint buffer size
       trajectory_update_freq: 15 # used to control trajectory points updating frequency
       waypoint_update_freq: 9 # used to control waypoint updating frequency
       trajectory_dt: 0.20 # for every dt seconds, we sample a trajectory point from the trajectory path as next goal state
@@ -112,7 +112,7 @@ vehicle_base: &vehicle_base
       resolution: 1
       waypoint_number: 32
       min_rl_plan_dist: 5
-      buffer_size: 4 # waypoint buffer size
+      buffer_size: 1 #4 # waypoint buffer size
       trajectory_update_freq: 15 # used to control trajectory points updating frequency
       waypoint_update_freq: 9 # used to control waypoint updating frequency
       trajectory_dt: 0.20 # for every dt seconds, we sample a trajectory point from the trajectory path as next goal state
@@ -197,7 +197,7 @@ scenario:
 # rl_configs
 rl_config: 
   exp_name: 'dqn9_bev32_buf2e5_lr1e4_bs128_ns3000_update4_train_ft'
-  action_delta_t: 15   # 1 second will result in short target (1 meters away)
+  action_delta_t: 3   # 1 second will result in short target (1 meters away)
                        # 10 second will lead to "route traced" return only current position
                        # 15s is the threshold of generating enough waypoints in route
   # rl env config 

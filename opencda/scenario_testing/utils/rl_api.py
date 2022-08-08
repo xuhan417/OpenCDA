@@ -187,6 +187,47 @@ def rl_train(opt, config_yaml, seed=0):
 
     replay_buffer.push(new_data, cur_collector_envstep=collector.envstep)
 
+    # trianing loop
+    # while True:
+    #     # spawn spectator
+    #     spectator = wrapped_env._rl_scenario_manager.world.get_spectator()
+    #     vehicle_transform = wrapped_env._hero_vehicle.get_transform()
+    #
+    #     spectator.set_transform(carla.Transform(
+    #         vehicle_transform.location +
+    #         carla.Location(
+    #             z=70),
+    #         carla.Rotation(
+    #             pitch=-
+    #             90)))
+    #     # evaluate policy
+    #     if evaluator.should_eval(learner.train_iter):
+    #         stop, rate = evaluator.eval(learner.save_checkpoint, learner.train_iter, collector.envstep)
+    #         if stop:
+    #             break
+    #     # one step
+    #     if args.policy == 'dqn':
+    #         eps = epsilon_greedy(collector.envstep)
+    #         new_data = collector.collect(train_iter=learner.train_iter, policy_kwargs={'eps': eps})
+    #     else:
+    #         new_data = collector.collect(train_iter=learner.train_iter)
+    #
+    #     # learn one step
+    #     unpack_birdview(new_data)
+    #     if args.policy == 'ppo':
+    #         learner.train(new_data, collector.envstep)
+    #     else:
+    #         update_per_collect = len(new_data) // cfg.policy.learn.batch_size * 4
+    #         replay_buffer.push(new_data, cur_collector_envstep=collector.envstep)
+    #         for i in range(update_per_collect):
+    #             train_data = replay_buffer.sample(cfg.policy.learn.batch_size, learner.train_iter)
+    #             if train_data is not None:
+    #                 train_data = copy.deepcopy(train_data)
+    #                 unpack_birdview(train_data)
+    #                 learner.train(train_data, collector.envstep)
+    #             if args.policy == 'dqn':
+    #                 replay_buffer.update(learner.priority_info)
+
     learner.call_hook('after_run')
 
     collector.close()

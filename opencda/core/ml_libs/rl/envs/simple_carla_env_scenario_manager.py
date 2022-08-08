@@ -207,20 +207,34 @@ class CarlaRLEnv(gym.Env, utils.EzPickle):
         next_waypoint_mid = get_next(ego_waypoint, ds)
         # debug visualization
         # start
-        self._cav_world.debug.draw_string(ego_waypoint.transform.location, 'x',
-                                          color=carla.Color(r=0, g=255, b=255),
-                                          life_time=1.0,
-                                          persistent_lines=True)
+        # self._cav_world.debug.draw_string(ego_waypoint.transform.location, 'x',
+        #                                   color=carla.Color(r=0, g=255, b=255),
+        #                                   life_time=1.0,
+        #                                   persistent_lines=True)
         # target
-        self._cav_world.debug.draw_string(next_waypoint_mid.transform.location, 'x',
+        self._cav_world.debug.draw_string(next_waypoint_mid.transform.location, '<-',
                                           color=carla.Color(r=0, g=255, b=0),
                                           life_time=1.0,
                                           persistent_lines=True)
         # testing draw point at next watpoint
-        # todo: testing mid only
-        return next_waypoint_mid
 
-        # todo: revert whole function after testing ------------------------------------------
+        # test 1. testing mid only --> vehicle can maintain current lane
+        # return next_waypoint_mid
+
+        # todo 2. testing left lane
+        if next_waypoint_mid:
+            next_waypoint_left = next_waypoint_mid.get_left_lane() if next_waypoint_mid.get_left_lane() else None
+            next_waypoint_right = next_waypoint_mid.get_right_lane() if next_waypoint_mid.get_right_lane() else None
+        else:
+            next_waypoint_left = None
+            next_waypoint_right = None
+        # try to change lane to left while situation allows
+        if next_waypoint_left:
+            return next_waypoint_left
+        else:
+            return next_waypoint_mid
+
+        # -----------------------------todo: revert whole function after testing ------------------------------------------
         # if next_waypoint_mid:
         #     next_waypoint_left = next_waypoint_mid.get_left_lane() if next_waypoint_mid.get_left_lane() else None
         #     next_waypoint_right = next_waypoint_mid.get_right_lane() if next_waypoint_mid.get_right_lane() else None
@@ -237,7 +251,7 @@ class CarlaRLEnv(gym.Env, utils.EzPickle):
         # target_waypoint = candidate_waypoints[np_action // 3, np_action % 3]
         #
         # return target_waypoint
-        # todo: revert whole function after testing ------------------------------------------
+        # -----------------------------todo: revert whole function after testing ------------------------------------------
     # print step
     def print_step(self, info):
         """
@@ -542,7 +556,6 @@ class CarlaRLEnv(gym.Env, utils.EzPickle):
 
         # Run one simulation step for all interfaces
         # 1. vehicle manager update run step
-
         for i, single_cav in enumerate(self._single_cav_list):
             single_cav.update_info()
             # only run reward step

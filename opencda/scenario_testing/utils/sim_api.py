@@ -288,6 +288,8 @@ class ScenarioManager:
             spectator.set_transform(carla.Transform(
                 spawn_transform.location +
                 carla.Location(
+                    x=-15,
+                    y=-15,
                     z=70),
                 carla.Rotation(
                     pitch=-
