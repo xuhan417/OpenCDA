@@ -588,7 +588,7 @@ class BehaviorAgent(object):
                 if distance < min_distance:
                     min_distance = distance
                     target_vehicle = vehicle
-        print('Collision manager hazard detect result: ' + str(vehicle_state))
+        # print('Collision manager hazard detect result: ' + str(vehicle_state))
         return vehicle_state, target_vehicle, min_distance
 
     def overtake_management(self, obstacle_vehicle):

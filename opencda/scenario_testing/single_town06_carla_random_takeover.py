@@ -38,7 +38,8 @@ from opencda.scenario_testing.utils.yaml_utils import \
     add_current_time
 
 # pygame render
-from opencda.core.common.pygame_render import World, HUD, KeyboardControl
+from opencda.core.common.pygame_render import World, HUD, \
+    KeyboardControl, pygame_loop
 
 # multi-processing
 from multiprocessing import Process, Queue, get_context
@@ -46,70 +47,6 @@ import multiprocessing
 # Set multiprocessing start method to 'spawn'
 multiprocessing.set_start_method('spawn', force=True)
 
-# ==============================================================================
-# -------- PyGame Loop ---------------------------------------------------------
-# ==============================================================================
-
-def pygame_loop(input_queue, output_queue):
-    """ Main loop for agent"""
-    pygame.init()
-    pygame.font.init()
-    world = None
-    tot_target_reached = 0
-    num_min_waypoints = 21
-    # get args
-    args = input_queue.get()
-
-    try:
-        client = carla.Client(args.host, args.port)
-        client.set_timeout(4.0)
-
-        display = pygame.display.set_mode(
-            (args.width, args.height),
-            pygame.HWSURFACE | pygame.DOUBLEBUF)
-
-        hud = HUD(args.width, args.height)
-        world = World(client.get_world(), hud, args)
-        controller = KeyboardControl(world)
-
-        # pygame clock 
-        clock = pygame.time.Clock()
-
-        connected_text = f'Connection established with OpenCDA vehicle...'
-        world.hud.notification(connected_text, seconds=1.0)
-        count = 0
-
-        # render loop
-        while True:
-            count += 1
-            clock.tick_busy_loop(60)
-            if controller.parse_events():
-                return
-
-            # As soon as the server is ready continue!
-            if not world.world.wait_for_tick(10.0):
-                continue
-
-                # as soon as the server is ready continue!
-                world.world.wait_for_tick(10.0)
-                world.tick(clock)
-                world.render(display)
-                pygame.display.flip()
-                
-            else:
-                # agent.update_information(world)
-                world.tick(clock)
-                world.render(display)
-                pygame.display.flip()
-
-            # load output queue
-            output_queue.put('Pygame loop start ticking ...')
-
-    finally:
-        if world is not None:
-            world.destroy()
-
-        pygame.quit()
 
 def run_scenario(opt, scenario_params):
     try:
