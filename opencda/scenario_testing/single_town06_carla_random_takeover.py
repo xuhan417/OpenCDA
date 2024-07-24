@@ -38,15 +38,13 @@ from opencda.scenario_testing.utils.yaml_utils import \
     add_current_time
 
 # pygame render
-from opencda.core.common.pygame_render import World, HUD, \
-    KeyboardControl, pygame_loop
+from opencda.core.common.pygame_render import pygame_loop
 
 # multi-processing
 from multiprocessing import Process, Queue, get_context
 import multiprocessing
 # Set multiprocessing start method to 'spawn'
 multiprocessing.set_start_method('spawn', force=True)
-
 
 def run_scenario(opt, scenario_params):
     try:
@@ -85,12 +83,13 @@ def run_scenario(opt, scenario_params):
 
         # multi-process
         ctx = get_context('spawn')
-        input_queue = ctx.Queue(maxsize=1)
-        output_queue = ctx.Queue(maxsize=1)
+        input_queue = ctx.Queue(maxsize=3)
+        output_queue = ctx.Queue(maxsize=3)
         pygame_process = ctx.Process(target=pygame_loop, 
                                      args=(input_queue,output_queue))
         # put opt to input queue
         input_queue.put(opt)
+        human_takeover = False
 
         # run steps
         while True:
@@ -107,7 +106,9 @@ def run_scenario(opt, scenario_params):
 
             # catch output queue
             if not output_queue.empty():
-                pygame_status = output_queue.get()
+                human_controls = output_queue.get()
+                human_takeover = human_controls['human_take_over']
+                print('human control signal is: ' + str(human_controls))
 
             # plan for human takeover
             # human_takeover_sec = random.uniform(1, 100) # random float from 1 to 100 with uniform distribution
@@ -131,10 +132,15 @@ def run_scenario(opt, scenario_params):
                     pitch=-
                     90)))
 
-            for i, single_cav in enumerate(single_cav_list):
-                single_cav.update_info()
-                control = single_cav.run_step()
-                single_cav.vehicle.apply_control(control)
+            single_cav = single_cav_list[0]
+            single_cav.update_info()
+            control = single_cav.run_step()
+            if human_takeover:
+                manual_control = carla.VehicleControl()
+                manual_control.throttle = human_controls['throttle']
+                manual_control.steer = human_controls['steer']
+                manual_control.brake = human_controls['brake']
+            single_cav.vehicle.apply_control(control)
 
     finally:
         input_queue.put(None)  # Signal the GPU process to terminate

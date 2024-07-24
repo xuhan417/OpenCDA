@@ -1029,7 +1029,7 @@ class BehaviorAgent(object):
         if car_following_flag:
             # print('Case 7, car following !!!')
             if distance < max(self.break_distance, 3):
-                print('smaller than break distance, start breaking!!')
+                # print('smaller than break distance, start breaking!!')
                 return 0, None
 
             target_speed = self.car_following_manager(obstacle_vehicle, distance, target_speed)

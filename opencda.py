@@ -35,7 +35,6 @@ import opencda.scenario_testing.utils.customized_map_api as map_api
 from opencda.core.common.cav_world import CavWorld
 from opencda.scenario_testing.evaluations.evaluate_manager import EvaluationManager
 from opencda.scenario_testing.utils.yaml_utils import add_current_time
-from opencda.core.common.pygame_render import World, HUD, KeyboardControl
 
 def arg_parse():
     # create an argument parser
@@ -75,40 +74,38 @@ def arg_parse():
         type=int,
         help='TCP port to listen to (default: 2000)')
     parser.add_argument(
+        '-a', '--autopilot',
+        action='store_true',
+        help='enable autopilot')
+    parser.add_argument(
         '--res',
         metavar='WIDTHxHEIGHT',
         default='1280x720',
-        help='Window resolution (default: 1280x720)')
+        help='window resolution (default: 1280x720)')
     parser.add_argument(
         '--filter',
         metavar='PATTERN',
         default='vehicle.*',
-        help='Actor filter (default: "vehicle.*")')
+        help='actor filter (default: "vehicle.*")')
+    parser.add_argument(
+        '--generation',
+        metavar='G',
+        default='2',
+        help='restrict to certain actor generation (values: "1","2","All" - default: "2")')
+    parser.add_argument(
+        '--rolename',
+        metavar='NAME',
+        default='hero',
+        help='actor role name (default: "hero")')
     parser.add_argument(
         '--gamma',
         default=2.2,
         type=float,
         help='Gamma correction of the camera (default: 2.2)')
     parser.add_argument(
-        '-l', '--loop',
-        action='store_true',
-        dest='loop',
-        help='Sets a new random destination upon reaching the previous one (default: False)')
-    parser.add_argument(
-        '-b', '--behavior', type=str,
-        choices=["cautious", "normal", "aggressive"],
-        help='Choose one of the possible agent behaviors (default: normal) ',
-        default='normal')
-    parser.add_argument(
-        '-a', '--agent', type=str,
-                           choices=["Behavior", "Roaming", "Basic"],
-                           help="select which agent to run",
-                           default="Behavior")
-    parser.add_argument(
-        '-s', '--seed',
-        help='Set seed for repeating executions (default: None)',
-        default=None,
-        type=int)
+        '--sync',
+        action='store_false',
+        help='Activate synchronous mode execution')
 
     # parse the arguments and return the result
     opt = parser.parse_args()

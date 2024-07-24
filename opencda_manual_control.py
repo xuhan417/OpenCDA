@@ -83,14 +83,19 @@ except IndexError:
 import carla
 
 from carla import ColorConverter as cc
-
+from omegaconf import OmegaConf
+import importlib
 import argparse
 import collections
 import datetime
+import glob
 import logging
+import os
 import math
 import random
 import re
+import sys
+import json
 import weakref
 
 try:
@@ -142,6 +147,15 @@ try:
 except ImportError:
     raise RuntimeError('cannot import numpy, make sure numpy package is installed')
 
+from opencda.version import __version__
+import opencda.scenario_testing.utils.sim_api as sim_api
+import opencda.scenario_testing.utils.customized_map_api as map_api
+
+from opencda.core.common.cav_world import CavWorld
+from opencda.scenario_testing.evaluations.evaluate_manager import \
+    EvaluationManager
+from opencda.scenario_testing.utils.yaml_utils import \
+    add_current_time
 
 # ==============================================================================
 # -- Global functions ----------------------------------------------------------
@@ -237,8 +251,6 @@ class World(object):
         ]
 
     def restart(self):
-        self.player_max_speed = 1.589
-        self.player_max_speed_fast = 3.713
         # Keep same camera config if the camera manager exists.
         cam_index = self.camera_manager.index if self.camera_manager is not None else 0
         cam_pos_index = self.camera_manager.transform_index if self.camera_manager is not None else 0
@@ -263,10 +275,7 @@ class World(object):
         self.camera_manager.set_sensor(cam_index, notify=False)
         actor_type = get_actor_display_name(self.player)
         self.hud.notification(actor_type)
-
-        # # only tick simulation if human take over
-        # if controller.human_take_over:
-        #     sim_world.tick()
+        self.world.tick()
 
     def next_weather(self, reverse=False):
         self._weather_index += -1 if reverse else 1
@@ -342,15 +351,21 @@ class World(object):
 
 class KeyboardControl(object):
     """Class that handles keyboard input."""
-    def __init__(self, world):
+    def __init__(self, world, start_in_autopilot):
+        self._autopilot_enabled = start_in_autopilot
         if isinstance(world.player, carla.Vehicle):
             self._control = carla.VehicleControl()
             self._lights = carla.VehicleLightState.NONE
+            world.player.set_autopilot(self._autopilot_enabled)
             world.player.set_light_state(self._lights)
+        elif isinstance(world.player, carla.Walker):
+            self._control = carla.WalkerControl()
+            self._autopilot_enabled = False
+            self._rotation = world.player.get_transform().rotation
+        else:
+            raise NotImplementedError("Actor type not supported")
         self._steer_cache = 0.0
         world.hud.notification("Press 'H' or '?' for help.", seconds=4.0)
-        # human take over 
-        self.human_take_over = False
 
     def parse_events(self, client, world, clock, sync_mode):
         if isinstance(self._control, carla.VehicleControl):
@@ -361,10 +376,15 @@ class KeyboardControl(object):
             elif event.type == pygame.KEYUP:
                 if self._is_quit_shortcut(event.key):
                     return True
+                elif event.key == K_BACKSPACE:
+                    if self._autopilot_enabled:
+                        world.player.set_autopilot(False)
+                        world.restart()
+                        world.player.set_autopilot(True)
+                    else:
+                        world.restart()
                 elif event.key == K_F1:
                     world.hud.toggle_info()
-                # enable/disable 
-
                 elif event.key == K_v and pygame.key.get_mods() & KMOD_SHIFT:
                     world.next_map_layer(reverse=True)
                 elif event.key == K_v:
@@ -443,6 +463,10 @@ class KeyboardControl(object):
                     # work around to fix camera at start of replaying
                     current_index = world.camera_manager.index
                     world.destroy_sensors()
+                    # disable autopilot
+                    self._autopilot_enabled = False
+                    world.player.set_autopilot(self._autopilot_enabled)
+                    world.hud.notification("Replaying file 'manual_recording.rec'")
                     # replayer
                     client.replay_file("manual_recording.rec", world.recording_start, 0, 0)
                     world.camera_manager.set_sensor(current_index)
@@ -468,16 +492,16 @@ class KeyboardControl(object):
                                                ('Manual' if self._control.manual_gear_shift else 'Automatic'))
                     elif self._control.manual_gear_shift and event.key == K_COMMA:
                         self._control.gear = max(-1, self._control.gear - 1)
-                    
-                    # toggle opencda 
-                    elif event.key == K_p and not pygame.key.get_mods() & KMOD_CTRL or\
-                        event.key ==K_w or event.key ==K_s or event.key ==K_a or event.key ==K_d:
-                        self.human_take_over = not self.human_take_over
-                        world.hud.notification(
-                            'OpenCDA: %s' % ('Off' if self.human_take_over else 'On'))
-
                     elif self._control.manual_gear_shift and event.key == K_PERIOD:
                         self._control.gear = self._control.gear + 1
+                    elif event.key == K_p and not pygame.key.get_mods() & KMOD_CTRL:
+                        if not self._autopilot_enabled and not sync_mode:
+                            print("WARNING: You are currently in asynchronous mode and could "
+                                  "experience some issues with the traffic simulation")
+                        self._autopilot_enabled = not self._autopilot_enabled
+                        world.player.set_autopilot(self._autopilot_enabled)
+                        world.hud.notification(
+                            'Autopilot %s' % ('On' if self._autopilot_enabled else 'Off'))
                     elif event.key == K_l and pygame.key.get_mods() & KMOD_CTRL:
                         current_lights ^= carla.VehicleLightState.Special1
                     elif event.key == K_l and pygame.key.get_mods() & KMOD_SHIFT:
@@ -505,7 +529,7 @@ class KeyboardControl(object):
                         current_lights ^= carla.VehicleLightState.LeftBlinker
                     elif event.key == K_x:
                         current_lights ^= carla.VehicleLightState.RightBlinker
-        
+
         if isinstance(self._control, carla.VehicleControl):
             self._parse_vehicle_keys(pygame.key.get_pressed(), clock.get_time())
             self._control.reverse = self._control.gear < 0
@@ -521,8 +545,8 @@ class KeyboardControl(object):
             if current_lights != self._lights: # Change the light state only if necessary
                 self._lights = current_lights
                 world.player.set_light_state(carla.VehicleLightState(self._lights))
-        # world.player.apply_control(self._control)
-        # print('keyboard control: ' + str(self._control))
+
+            # world.player.apply_control(self._control)
 
     def _parse_vehicle_keys(self, keys, milliseconds):
         if keys[K_UP] or keys[K_w]:
@@ -1119,18 +1143,46 @@ class CameraManager(object):
 # ==============================================================================
 
 
-def pygame_loop(input_queue, output_queue):
+def game_loop(args, scenario_params):
     pygame.init()
     pygame.font.init()
     world = None
     original_settings = None
-    # get args
-    args = input_queue.get()
 
     try:
-        client = carla.Client(args.host, args.port)
-        client.set_timeout(20.0)
-        sim_world = client.get_world()
+        # 1. opencda funcitons 
+        # init simulation tick count 
+        tick = 0
+        scenario_params = add_current_time(scenario_params)
+
+        # create CAV world
+        cav_world = CavWorld(args.apply_ml)
+
+        # create scenario manager
+        scenario_manager = sim_api.ScenarioManager(scenario_params,
+                                                   args.apply_ml,
+                                                   args.version,
+                                                   town='Town06',
+                                                   cav_world=cav_world)
+
+        single_cav_list = \
+            scenario_manager.create_vehicle_manager(application=['single'])
+
+        # create background traffic in carla
+        traffic_manager, bg_veh_list = \
+            scenario_manager.create_traffic_carla()
+
+        # create evaluation manager
+        eval_manager = \
+            EvaluationManager(scenario_manager.cav_world,
+                              script_name='single_intersection_town06_carla',
+                              current_time=scenario_params['current_time'])
+
+        spectator = scenario_manager.world.get_spectator()
+
+        # 2. carla functions 
+        client = scenario_manager.client
+        sim_world = scenario_manager.world
 
         display = pygame.display.set_mode(
             (args.width, args.height),
@@ -1140,37 +1192,64 @@ def pygame_loop(input_queue, output_queue):
 
         hud = HUD(args.width, args.height)
         world = World(sim_world, hud, args)
-        controller = KeyboardControl(world)
-
-        # # only tick simulation if human take over
-        # if controller.human_take_over:
+        controller = KeyboardControl(world, args.autopilot)
+        sim_world.tick()
+        # if args.sync:
         #     sim_world.tick()
-        
-        clock = pygame.time.Clock()
-        while True:
-            # # only tick simulation if human take over
-            # if controller.human_take_over:
-            #     sim_world.tick()
+        # else:
+        #     sim_world.wait_for_tick()
 
-            clock.tick_busy_loop(60)
+        clock = pygame.time.Clock()
+
+        # 3. game loop
+        while True:
+            # 3a. opencda step
+            scenario_manager.tick()
+            # increment simulation tick 
+            tick += 1
+
+            # plan for human takeover
+            # human_takeover_sec = random.uniform(1, 100) # random float from 1 to 100 with uniform distribution
+            human_takeover_sec = 10 # hard code for debug purpose
+            sim_dt = scenario_params['world']['fixed_delta_seconds']
+            if tick*sim_dt == human_takeover_sec:
+                print('Reduce collision time, human takeover !!!')
+                # reduce safety distance 
+                single_cav = single_cav_list[0].agent.reduce_following_dist()
+                # check collision checker state 
+                new_collision_time = single_cav_list[0].agent._collision_check.time_ahead
+                print('New collision checker is enabled with: ' + \
+                        str(new_collision_time) + 'second ahead time! ')
+
+            # update spectator 
+            transform = single_cav_list[0].vehicle.get_transform()
+            spectator.set_transform(carla.Transform(
+                transform.location +
+                carla.Location(
+                    z=50),
+                carla.Rotation(
+                    pitch=-
+                    90)))
+            
+            # 3b. pygame render step
+            # clock.tick_busy_loop(60)
+            sim_world.tick()
             if controller.parse_events(client, world, clock, args.sync):
                 return
             world.tick(clock)
             world.render(display)
             pygame.display.flip()
 
-            # send keyboard control back 
-            output_dict = {}
-            output_dict['human_take_over'] = controller.human_take_over
-            output_dict['throttle'] = controller._control.throttle
-            output_dict['steer'] = controller._control.steer
-            output_dict['brake'] = controller._control.brake
-            output_dict['hand_brake'] = controller._control.hand_brake
-            output_dict['reverse'] = controller._control.reverse
-            # send to main loop
-            output_queue.put(output_dict)
+            # 3c. actuation
+            for i, single_cav in enumerate(single_cav_list):
+                single_cav.update_info()
+                control = single_cav.run_step()
+                manual_control = controller._control
+                # manual_control.brake = 1.0
+                single_cav.vehicle.apply_control(control)
 
     finally:
+
         if original_settings:
             sim_world.apply_settings(original_settings)
 
@@ -1181,3 +1260,117 @@ def pygame_loop(input_queue, output_queue):
             world.destroy()
 
         pygame.quit()
+
+        scenario_manager.close()
+
+        for v in single_cav_list:
+            v.destroy()
+        for v in bg_veh_list:
+            v.destroy()
+
+
+# ==============================================================================
+# -- main() --------------------------------------------------------------------
+# ==============================================================================
+
+
+def main():
+    argparser = argparse.ArgumentParser(
+        description='CARLA Manual Control Client')
+    argparser.add_argument(
+        '-v', '--verbose',
+        action='store_true',
+        dest='debug',
+        help='print debug information')
+    argparser.add_argument(
+        '--host',
+        metavar='H',
+        default='127.0.0.1',
+        help='IP of the host server (default: 127.0.0.1)')
+    argparser.add_argument(
+        '-p', '--port',
+        metavar='P',
+        default=2000,
+        type=int,
+        help='TCP port to listen to (default: 2000)')
+    argparser.add_argument(
+        '-a', '--autopilot',
+        action='store_true',
+        help='enable autopilot')
+    argparser.add_argument(
+        '--res',
+        metavar='WIDTHxHEIGHT',
+        default='1280x720',
+        help='window resolution (default: 1280x720)')
+    argparser.add_argument(
+        '--filter',
+        metavar='PATTERN',
+        default='vehicle.*',
+        help='actor filter (default: "vehicle.*")')
+    argparser.add_argument(
+        '--generation',
+        metavar='G',
+        default='2',
+        help='restrict to certain actor generation (values: "1","2","All" - default: "2")')
+    argparser.add_argument(
+        '--rolename',
+        metavar='NAME',
+        default='hero',
+        help='actor role name (default: "hero")')
+    argparser.add_argument(
+        '--gamma',
+        default=2.2,
+        type=float,
+        help='Gamma correction of the camera (default: 2.2)')
+    argparser.add_argument(
+        '--sync',
+        action='store_false',
+        help='Activate synchronous mode execution')
+    argparser.add_argument('-t', "--test_scenario", required=True, type=str,
+                        help='Define the name of the scenario you want to test. The given name must'
+                             'match one of the testing scripts(e.g. single_2lanefree_carla) in '
+                             'opencda/scenario_testing/ folder'
+                             ' as well as the corresponding yaml file in opencda/scenario_testing/config_yaml.')
+    argparser.add_argument("--record", action='store_true',
+                        help='whether to record and save the simulation process to .log file')
+    argparser.add_argument("--apply_ml",
+                        action='store_true',
+                        help='whether ml/dl framework such as sklearn/pytorch is needed in the testing. '
+                             'Set it to true only when you have installed the pytorch/sklearn package.')
+    argparser.add_argument("--version", type=str, default='0.9.13',
+                        help='Specify the CARLA simulator version, default'
+                             'is 0.9.14')
+
+    args = argparser.parse_args()
+
+    args.width, args.height = [int(x) for x in args.res.split('x')]
+
+    log_level = logging.DEBUG if args.debug else logging.INFO
+    logging.basicConfig(format='%(levelname)s: %(message)s', level=log_level)
+
+    logging.info('listening to server %s:%s', args.host, args.port)
+
+    print(__doc__)
+
+    try:
+        # set the default yaml file
+        default_yaml = config_yaml = os.path.join(os.path.dirname(os.path.realpath(__file__)),\
+                                         'opencda/scenario_testing/config_yaml/default.yaml')
+        # set the yaml file for the specific testing scenario
+        config_yaml = os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                                   'opencda/scenario_testing/config_yaml/%s.yaml' % args.test_scenario)
+        # load the default yaml file and the scenario yaml file as dictionaries
+        default_dict = OmegaConf.load(default_yaml)
+        scene_dict = OmegaConf.load(config_yaml)
+        # merge the dictionaries
+        scene_dict = OmegaConf.merge(default_dict, scene_dict)
+        
+        game_loop(args, scene_dict)
+
+    except KeyboardInterrupt:
+        print('\nCancelled by user. Bye!')
+
+
+if __name__ == '__main__':
+
+    main()
