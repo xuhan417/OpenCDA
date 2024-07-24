@@ -83,8 +83,8 @@ def run_scenario(opt, scenario_params):
 
         # multi-process
         ctx = get_context('spawn')
-        input_queue = ctx.Queue(maxsize=3)
-        output_queue = ctx.Queue(maxsize=3)
+        input_queue = ctx.Queue(maxsize=1)
+        output_queue = ctx.Queue(maxsize=1)
         pygame_process = ctx.Process(target=pygame_loop, 
                                      args=(input_queue,output_queue))
         # put opt to input queue
@@ -140,7 +140,10 @@ def run_scenario(opt, scenario_params):
                 manual_control.throttle = human_controls['throttle']
                 manual_control.steer = human_controls['steer']
                 manual_control.brake = human_controls['brake']
-            single_cav.vehicle.apply_control(control)
+                manual_control.reverse = human_controls['reverse']
+                single_cav.vehicle.apply_control(manual_control)
+            else:
+                single_cav.vehicle.apply_control(control)
 
     finally:
         input_queue.put(None)  # Signal the GPU process to terminate

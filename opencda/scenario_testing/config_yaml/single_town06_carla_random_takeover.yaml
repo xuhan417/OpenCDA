@@ -3,6 +3,12 @@ description: |-
   Author: Runsheng Xu <rxx3386@ucla.edu>
   Content: This is the scenario testing configuration file for single vehicle perception/localization/behavior/control
            testing in high speed in the customized 2lanefree simple version.
+# define carla simulation setting
+world:
+  sync_mode: true
+  client_port: 2000
+  fixed_delta_seconds: 0.04
+  seed: 11 # seed for numpy and random
 
 # First define the basic parameters of the vehicles
 vehicle_base:

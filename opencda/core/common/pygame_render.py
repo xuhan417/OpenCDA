@@ -264,10 +264,6 @@ class World(object):
         actor_type = get_actor_display_name(self.player)
         self.hud.notification(actor_type)
 
-        # # only tick simulation if human take over
-        # if controller.human_take_over:
-        #     sim_world.tick()
-
     def next_weather(self, reverse=False):
         self._weather_index += -1 if reverse else 1
         self._weather_index %= len(self._weather_presets)
@@ -470,11 +466,17 @@ class KeyboardControl(object):
                         self._control.gear = max(-1, self._control.gear - 1)
                     
                     # toggle opencda 
-                    elif event.key == K_p and not pygame.key.get_mods() & KMOD_CTRL or\
-                        event.key ==K_w or event.key ==K_s or event.key ==K_a or event.key ==K_d:
+                    # option 1: manually switch 
+                    elif event.key == K_p and not pygame.key.get_mods() & KMOD_CTRL:
                         self.human_take_over = not self.human_take_over
                         world.hud.notification(
                             'OpenCDA: %s' % ('Off' if self.human_take_over else 'On'))
+                    # option 2: manual controrl over-ride when opencda is working 
+                    elif not self.human_take_over and \
+                        event.key == K_w or event.key == K_s or event.key == K_a or event.key == K_d:
+                        self.human_take_over = True
+                        world.hud.notification(
+                            'Manual Control Detected. OpenCDA: %s' % ('Off' if self.human_take_over else 'On'))
 
                     elif self._control.manual_gear_shift and event.key == K_PERIOD:
                         self._control.gear = self._control.gear + 1
@@ -1141,16 +1143,9 @@ def pygame_loop(input_queue, output_queue):
         hud = HUD(args.width, args.height)
         world = World(sim_world, hud, args)
         controller = KeyboardControl(world)
-
-        # # only tick simulation if human take over
-        # if controller.human_take_over:
-        #     sim_world.tick()
         
         clock = pygame.time.Clock()
         while True:
-            # # only tick simulation if human take over
-            # if controller.human_take_over:
-            #     sim_world.tick()
 
             clock.tick_busy_loop(60)
             if controller.parse_events(client, world, clock, args.sync):
