@@ -141,7 +141,7 @@ def run_scenario(opt, scenario_params):
                 manual_control.steer = human_controls['steer']
                 manual_control.brake = human_controls['brake']
                 manual_control.reverse = human_controls['reverse']
-                single_cav.vehicle.apply_control(manual_control)
+                single_cav.vehicle.apply_control(control)
             else:
                 single_cav.vehicle.apply_control(control)
 

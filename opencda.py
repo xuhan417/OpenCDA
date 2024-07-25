@@ -60,6 +60,13 @@ def arg_parse():
                         action='store_true',
                         help='whether to use Pygame to render the simulation with a first person view. '
                              'Inside the ego vehicle. Note the ego vehicle needs to have a proper role_name.')
+    # add argument of whether use pygame rendering interface
+    parser.add_argument("--sim_wheel",
+                        action='store_true',
+                        help='whether to use simulation steering wheel as input device.')
+    parser.add_argument("--sim_wheel_config_path",
+                        action='store_true',
+                        help='config file path for the sim wheel.')
 
     # add pygame arguments to parser 
     parser.add_argument(
@@ -80,8 +87,8 @@ def arg_parse():
     parser.add_argument(
         '--res',
         metavar='WIDTHxHEIGHT',
-        default='1280x720',
-        help='window resolution (default: 1280x720)')
+        default='1920x1080',
+        help='window resolution (default: 1920x1080)')
     parser.add_argument(
         '--filter',
         metavar='PATTERN',
@@ -121,6 +128,10 @@ def main():
     opt = arg_parse()
     # print the version of OpenCDA
     print("OpenCDA Version: %s" % __version__)
+    # sim wheel 
+    if opt.sim_wheel:
+        opt.sim_wheel_config_path = r'/home/ccorreaj/OpenCDA/opencda/scenario_testing/utils/'
+
     # set the default yaml file
     default_yaml = config_yaml = os.path.join(
         os.path.dirname(os.path.realpath(__file__)),
@@ -128,6 +139,7 @@ def main():
     # set the yaml file for the specific testing scenario
     config_yaml = os.path.join(os.path.dirname(os.path.realpath(__file__)),
                                'opencda/scenario_testing/config_yaml/%s.yaml' % opt.test_scenario)
+
     # load the default yaml file and the scenario yaml file as dictionaries
     default_dict = OmegaConf.load(default_yaml)
     scene_dict = OmegaConf.load(config_yaml)

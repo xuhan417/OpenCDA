@@ -53,27 +53,10 @@ Use ARROWS or WASD keys for control.
     H/?          : toggle help
     ESC          : quit
 """
-
 from __future__ import print_function
-
-
-# ==============================================================================
-# -- find carla module ---------------------------------------------------------
-# ==============================================================================
-
-
 import glob
 import os
 import sys
-
-try:
-    sys.path.append(glob.glob('../carla/dist/carla-*%d.%d-%s.egg' % (
-        sys.version_info.major,
-        sys.version_info.minor,
-        'win-amd64' if os.name == 'nt' else 'linux-x86_64'))[0])
-except IndexError:
-    pass
-
 
 # ==============================================================================
 # -- imports -------------------------------------------------------------------
@@ -81,7 +64,6 @@ except IndexError:
 
 
 import carla
-
 from carla import ColorConverter as cc
 
 import argparse
@@ -92,6 +74,14 @@ import math
 import random
 import re
 import weakref
+
+if sys.version_info >= (3, 0):
+
+    from configparser import ConfigParser
+
+else:
+
+    from ConfigParser import RawConfigParser as ConfigParser
 
 try:
     import pygame
@@ -348,7 +338,7 @@ class KeyboardControl(object):
         # human take over 
         self.human_take_over = False
 
-    def parse_events(self, client, world, clock, sync_mode):
+    def parse_events(self, client, world, clock):
         if isinstance(self._control, carla.VehicleControl):
             current_lights = self._lights
         for event in pygame.event.get():
@@ -476,7 +466,7 @@ class KeyboardControl(object):
                         event.key == K_w or event.key == K_s or event.key == K_a or event.key == K_d:
                         self.human_take_over = True
                         world.hud.notification(
-                            'Manual Control Detected. OpenCDA: %s' % ('Off' if self.human_take_over else 'On'))
+                            'Manual Control Detected. OpenCDA turned Off.')
 
                     elif self._control.manual_gear_shift and event.key == K_PERIOD:
                         self._control.gear = self._control.gear + 1
@@ -560,6 +550,123 @@ class KeyboardControl(object):
 
 
 # ==============================================================================
+# -- SimControl -----------------------------------------------------------
+# ==============================================================================
+
+
+class SimControl(object):
+    def __init__(self, world, config_dir):
+        if isinstance(world.player, carla.Vehicle):
+            self._control = carla.VehicleControl()
+            # set light
+            self._lights = carla.VehicleLightState.NONE
+            world.player.set_light_state(self._lights)
+        self._steer_cache = 0.0
+        world.hud.notification("Press 'H' or '?' for help.", seconds=4.0)
+        # human take over 
+        self.human_take_over = False
+
+        # initialize steering wheel
+        pygame.joystick.init()
+
+        joystick_count = pygame.joystick.get_count()
+        if joystick_count > 1:
+            raise ValueError("Please Connect Just One Joystick")
+
+        self._joystick = pygame.joystick.Joystick(0)
+        self._joystick.init()
+
+        self._parser = ConfigParser()
+        wheel_config_path = os.path.join(config_dir, 'wheel_config.ini')
+        self._parser.read(wheel_config_path)
+
+        self._steer_idx = int(
+            self._parser.get('G29 Racing Wheel', 'steering_wheel'))
+        self._throttle_idx = int(
+            self._parser.get('G29 Racing Wheel', 'throttle'))
+        self._brake_idx = int(self._parser.get('G29 Racing Wheel', 'brake'))
+        self._reverse_idx = int(self._parser.get('G29 Racing Wheel', 'reverse'))
+        self._handbrake_idx = int(
+            self._parser.get('G29 Racing Wheel', 'handbrake'))
+
+    def parse_events(self, world, clock):
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                return True
+            elif event.type == pygame.JOYBUTTONDOWN:
+                if event.button == 0:
+                    world.restart()
+                elif event.button == 1:
+                    world.hud.toggle_info()
+                elif event.button == 2:
+                    world.camera_manager.toggle_camera()
+                elif event.button == 3:
+                    world.next_weather()
+                elif event.button == self._reverse_idx:
+                    self._control.gear = 1 if self._control.reverse else -1
+                elif event.button == 23:
+                    world.camera_manager.next_sensor()
+
+            # preserve keyboard input for toggle HUD and OpenCDA Agent 
+            elif event.type == pygame.KEYUP:
+                if self._is_quit_shortcut(event.key):
+                    return True
+                elif event.key == K_BACKSPACE:
+                    world.restart()
+                elif event.key == K_F1:
+                    world.hud.toggle_info()
+                # manually toggle opencda
+                elif event.key == K_p and not pygame.key.get_mods() & KMOD_CTRL:
+                    self.human_take_over = not self.human_take_over
+                    world.hud.notification(
+                        'OpenCDA Agent Switch: %s' % ('Off' if self.human_take_over else 'On'))
+
+        if isinstance(self._control, carla.VehicleControl):
+            self._parse_vehicle_wheel()
+            self._control.reverse = self._control.gear < 0
+
+    def _parse_vehicle_wheel(self):
+        numAxes = self._joystick.get_numaxes()
+        jsInputs = [float(self._joystick.get_axis(i)) for i in range(numAxes)]
+        # print (jsInputs)
+        jsButtons = [float(self._joystick.get_button(i)) for i in
+                     range(self._joystick.get_numbuttons())]
+
+        # Custom function to map range of inputs [1, -1] to outputs [0, 1] i.e 1 from inputs means nothing is pressed
+        # For the steering, it seems fine as it is
+        K1 = 1.0  # 0.55
+        steerCmd = K1 * math.tan(1.1 * jsInputs[self._steer_idx])
+
+        # update control method based on steering input 
+        if abs(steerCmd) >= 0.006:
+            self.human_take_over = True
+
+        K2 = 1.6  # 1.6
+        throttleCmd = K2 + (2.05 * math.log10(
+            -0.7 * jsInputs[self._throttle_idx] + 1.4) - 1.2) / 0.92
+        if throttleCmd <= 0:
+            throttleCmd = 0
+        elif throttleCmd > 1:
+            throttleCmd = 1
+
+        brakeCmd = 1.6 + (2.05 * math.log10(
+            -0.7 * jsInputs[self._brake_idx] + 1.4) - 1.2) / 0.92
+        if brakeCmd <= 0:
+            brakeCmd = 0
+        elif brakeCmd > 1:
+            brakeCmd = 1
+
+        self._control.steer = steerCmd
+        self._control.brake = brakeCmd
+        self._control.throttle = throttleCmd
+        self._control.hand_brake = bool(jsButtons[self._handbrake_idx])
+
+    @staticmethod
+    def _is_quit_shortcut(key):
+        return (key == K_ESCAPE) or (key == K_q and pygame.key.get_mods() & KMOD_CTRL)
+
+
+# ==============================================================================
 # -- HUD -----------------------------------------------------------------------
 # ==============================================================================
 
@@ -567,6 +674,7 @@ class KeyboardControl(object):
 class HUD(object):
     def __init__(self, width, height):
         self.dim = (width, height)
+        pygame.font.init()
         font = pygame.font.Font(pygame.font.get_default_font(), 20)
         font_name = 'courier' if os.name == 'nt' else 'mono'
         fonts = [x for x in pygame.font.get_fonts() if font_name in x]
@@ -574,6 +682,13 @@ class HUD(object):
         mono = default_font if default_font in fonts else fonts[0]
         mono = pygame.font.match_font(mono)
         self._font_mono = pygame.font.Font(mono, 12 if os.name == 'nt' else 14)
+       
+        # add bold font for opencda sim
+        self._font_large_bold = pygame.font.Font(mono, 30 if os.name == 'nt' else 36)
+        self._font_large_bold.set_bold(True)
+        self._font_xlarge_bold = pygame.font.Font(mono, 60 if os.name == 'nt' else 36)
+        self._font_xlarge_bold.set_bold(True)
+
         self._notifications = FadingText(font, (width, 40), (0, height - 40))
         self.help = HelpText(pygame.font.Font(mono, 16), width, height)
         self.server_fps = 0
@@ -582,6 +697,13 @@ class HUD(object):
         self._show_info = True
         self._info_text = []
         self._server_clock = pygame.time.Clock()
+
+        # text for opencda sim
+        self.speed_text = ""
+        self.driving_mode = "OpenCDA"
+        self._show_warning = False  
+        self._warning_text = ""     
+        self._warning_time = 0  
 
     def on_world_tick(self, timestamp):
         self._server_clock.tick()
@@ -606,6 +728,8 @@ class HUD(object):
         max_col = max(1.0, max(collision))
         collision = [x / max_col for x in collision]
         vehicles = world.world.get_actors().filter('vehicle.*')
+        self.speed_text = '% 15.0f km/h' % (3.6 * math.sqrt(v.x**2 + v.y**2 + v.z**2))
+
         self._info_text = [
             'Server:  % 16.0f FPS' % self.server_fps,
             'Client:  % 16.0f FPS' % clock.get_fps(),
@@ -657,11 +781,49 @@ class HUD(object):
     def notification(self, text, seconds=2.0):
         self._notifications.set_text(text, seconds=seconds)
 
+    def show_warning(self, text, seconds=2.0):
+        '''
+        Show warnings for the opencda sim. 
+        '''
+        self._warning_text = text
+        self._warning_time = seconds
+        self._show_warning = True
+
     def error(self, text):
         self._notifications.set_text('Error: %s' % text, (255, 0, 0))
 
+    def set_driving_mode(self, human_take_over):
+        '''Change driving mode visualization for opencda sim.'''
+        self.driving_mode = "Manual" if human_take_over else "OpenCDA"
+
     def render(self, display):
         if self._show_info:
+            # 1. Warnings for opencda sim
+            # Render the speed in the middle of the screen with larger, bold font in a circle
+            speed_value_surface = self._font_xlarge_bold.render(self.speed_text, True, (255, 255, 255))
+            driving_mode_surface = self._font_large_bold.render(self.driving_mode, True, (255, 255, 255))
+
+            # Define the radius of the circles
+            circle_radius = 75
+
+            # Set the position of the circles
+            speed_center = ((self.dim[0] - 2 * circle_radius) // 2 + 330, (self.dim[1] - 2 * circle_radius) // 2 + 320)
+            mode_center = ((self.dim[0] - 2 * circle_radius) // 2 - 75, (self.dim[1] - 2 * circle_radius) // 2 + 320)
+
+            # Set the color based on the driving mode
+            mode_color = (0, 255, 0) if self.driving_mode == "OpenCDA" else (255, 0, 0)
+
+            # Draw the circles
+            pygame.draw.circle(display, (16, 117, 89), speed_center, circle_radius)
+            pygame.draw.circle(display, mode_color, mode_center, circle_radius)
+
+            # Blit the text onto the display
+            display.blit(speed_value_surface, (speed_center[0] - speed_value_surface.get_width() // 2 - 120, \
+                                               speed_center[1] - speed_value_surface.get_height() // 2))
+            display.blit(driving_mode_surface, (mode_center[0] - driving_mode_surface.get_width() // 2, \
+                                                mode_center[1] - driving_mode_surface.get_height() // 2))
+
+            # 2. Existing renders 
             info_surface = pygame.Surface((220, self.dim[1]))
             info_surface.set_alpha(100)
             display.blit(info_surface, (0, 0))
@@ -697,6 +859,13 @@ class HUD(object):
                 v_offset += 18
         self._notifications.render(display)
         self.help.render(display)
+
+        # 3. display warnings 
+        if self._show_warning:
+            warning_surface = self._font_large_bold.render(self._warning_text, True, (0, 0, 0))
+            warning_rect = warning_surface.get_rect(center=(self.dim[0] // 2, self.dim[1] // 2))
+            pygame.draw.rect(display, (255, 255, 0), warning_rect.inflate(20, 20))
+            display.blit(warning_surface, warning_rect)
 
 
 # ==============================================================================
@@ -974,25 +1143,20 @@ class CameraManager(object):
         self._parent = parent_actor
         self.hud = hud
         self.recording = False
-        bound_x = 0.5 + self._parent.bounding_box.extent.x
-        bound_y = 0.5 + self._parent.bounding_box.extent.y
-        bound_z = 0.5 + self._parent.bounding_box.extent.z
-        Attachment = carla.AttachmentType
 
-        if not self._parent.type_id.startswith("walker.pedestrian"):
-            self._camera_transforms = [
-                (carla.Transform(carla.Location(x=-2.0*bound_x, y=+0.0*bound_y, z=2.0*bound_z), carla.Rotation(pitch=8.0)), Attachment.SpringArm),
-                (carla.Transform(carla.Location(x=+0.8*bound_x, y=+0.0*bound_y, z=1.3*bound_z)), Attachment.Rigid),
-                (carla.Transform(carla.Location(x=+1.9*bound_x, y=+1.0*bound_y, z=1.2*bound_z)), Attachment.SpringArm),
-                (carla.Transform(carla.Location(x=-2.8*bound_x, y=+0.0*bound_y, z=4.6*bound_z), carla.Rotation(pitch=6.0)), Attachment.SpringArm),
-                (carla.Transform(carla.Location(x=-1.0, y=-1.0*bound_y, z=0.4*bound_z)), Attachment.Rigid)]
-        else:
-            self._camera_transforms = [
-                (carla.Transform(carla.Location(x=-2.5, z=0.0), carla.Rotation(pitch=-8.0)), Attachment.SpringArm),
-                (carla.Transform(carla.Location(x=1.6, z=1.7)), Attachment.Rigid),
-                (carla.Transform(carla.Location(x=2.5, y=0.5, z=0.0), carla.Rotation(pitch=-8.0)), Attachment.SpringArm),
-                (carla.Transform(carla.Location(x=-4.0, z=2.0), carla.Rotation(pitch=6.0)), Attachment.SpringArm),
-                (carla.Transform(carla.Location(x=0, y=-2.5, z=-0.0), carla.Rotation(yaw=90.0)), Attachment.Rigid)]
+        # Revise Camera for the opencda sim
+        bound_x = self._parent.bounding_box.extent.x
+        bound_y = self._parent.bounding_box.extent.y
+        bound_z = self._parent.bounding_box.extent.z
+        # interior viewing angle 
+        self._camera_transforms = [
+            # dev note: larger x --> closer to the front; larger z --> higher
+            carla.Transform(carla.Location(x=0.075 * bound_x, y=-0.25, z=1.67 * bound_z), carla.Rotation(pitch=0.0)),
+            carla.Transform(carla.Location(x=0.04 * bound_x, y=-0.25, z=1.51 * bound_z), carla.Rotation(pitch=-5.0)),
+            carla.Transform(carla.Location(x=0.04 * bound_x, y=-0.25, z=1.51 * bound_z), carla.Rotation(pitch=-15.0)),
+            carla.Transform(carla.Location(x=0.04 * bound_x, y=-0.25, z=1.51 * bound_z), carla.Rotation(pitch=5.0)),
+            carla.Transform(carla.Location(x=0.04 * bound_x, y=-0.25, z=1.51 * bound_z), carla.Rotation(pitch=15.0))
+        ]
 
         self.transform_index = 1
         self.sensors = [
@@ -1037,21 +1201,20 @@ class CameraManager(object):
 
     def toggle_camera(self):
         self.transform_index = (self.transform_index + 1) % len(self._camera_transforms)
-        self.set_sensor(self.index, notify=False, force_respawn=True)
+        self.sensor.set_transform(self._camera_transforms[self.transform_index])
 
-    def set_sensor(self, index, notify=True, force_respawn=False):
+    def set_sensor(self, index, notify=True):
         index = index % len(self.sensors)
-        needs_respawn = True if self.index is None else \
-            (force_respawn or (self.sensors[index][2] != self.sensors[self.index][2]))
+        needs_respawn = True if self.index is None else self.sensors[index][0] != self.sensors[self.index][0]
+       
         if needs_respawn:
             if self.sensor is not None:
                 self.sensor.destroy()
                 self.surface = None
             self.sensor = self._parent.get_world().spawn_actor(
                 self.sensors[index][-1],
-                self._camera_transforms[self.transform_index][0],
-                attach_to=self._parent,
-                attachment_type=self._camera_transforms[self.transform_index][1])
+                self._camera_transforms[self.transform_index],
+                attach_to=self._parent)
             # We need to pass the lambda a weak reference to self to avoid
             # circular reference.
             weak_self = weakref.ref(self)
@@ -1117,7 +1280,7 @@ class CameraManager(object):
 
 
 # ==============================================================================
-# -- game_loop() ---------------------------------------------------------------
+# -- pygame_loop ---------------------------------------------------------------
 # ==============================================================================
 
 
@@ -1142,26 +1305,55 @@ def pygame_loop(input_queue, output_queue):
 
         hud = HUD(args.width, args.height)
         world = World(sim_world, hud, args)
-        controller = KeyboardControl(world)
+
+        # find controller 
+        if args.sim_wheel:
+            sim_controller = SimControl(world, \
+                                args.sim_wheel_config_path)
+        else:
+            controller = KeyboardControl(world)
         
         clock = pygame.time.Clock()
         while True:
-
+            # init render clock
             clock.tick_busy_loop(60)
-            if controller.parse_events(client, world, clock, args.sync):
-                return
+
+            # tick controller 
+            if args.sim_wheel:
+                if sim_controller.parse_events(world, clock):
+                    return
+            else:
+                if controller.parse_events(client, world, clock):
+                    return
+
             world.tick(clock)
             world.render(display)
             pygame.display.flip()
 
+            # update take over state 
+            if args.sim_wheel:
+                hud.set_driving_mode(sim_controller.human_take_over)
+            else:
+                hud.set_driving_mode(controller.human_take_over)
+
             # send keyboard control back 
             output_dict = {}
-            output_dict['human_take_over'] = controller.human_take_over
-            output_dict['throttle'] = controller._control.throttle
-            output_dict['steer'] = controller._control.steer
-            output_dict['brake'] = controller._control.brake
-            output_dict['hand_brake'] = controller._control.hand_brake
-            output_dict['reverse'] = controller._control.reverse
+            if args.sim_wheel: 
+                # load sim wheel control 
+                output_dict['human_take_over'] = sim_controller.human_take_over
+                output_dict['throttle'] = sim_controller._control.throttle
+                output_dict['steer'] = sim_controller._control.steer
+                output_dict['brake'] = sim_controller._control.brake
+                output_dict['hand_brake'] = sim_controller._control.hand_brake
+                output_dict['reverse'] = sim_controller._control.reverse
+            else: 
+                # keyboard control
+                output_dict['human_take_over'] = controller.human_take_over
+                output_dict['throttle'] = controller._control.throttle
+                output_dict['steer'] = controller._control.steer
+                output_dict['brake'] = controller._control.brake
+                output_dict['hand_brake'] = controller._control.hand_brake
+                output_dict['reverse'] = controller._control.reverse
             # send to main loop
             output_queue.put(output_dict)
 
