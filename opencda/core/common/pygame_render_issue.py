@@ -229,6 +229,9 @@ class World(object):
     def restart(self):
         self.player_max_speed = 1.589
         self.player_max_speed_fast = 3.713
+        # Keep same camera config if the camera manager exists.
+        cam_index = self.camera_manager.index if self.camera_manager is not None else 0
+        cam_pos_index = self.camera_manager.transform_index if self.camera_manager is not None else 0
         
         # locate OpenCDA vehicle
         print("Finding the ego vehicle...")
@@ -246,9 +249,13 @@ class World(object):
         self.gnss_sensor = GnssSensor(self.player)
         self.imu_sensor = IMUSensor(self.player)
         self.camera_manager = CameraManager(self.player, self.hud, self._gamma)
+        self.camera_manager.transform_index = cam_pos_index
         self.camera_manager.set_sensor()
         actor_type = get_actor_display_name(self.player)
         self.hud.notification(actor_type)
+
+        # tick once to update camera 
+        self.world.tick()
 
     def next_weather(self, reverse=False):
         self._weather_index += -1 if reverse else 1
@@ -357,18 +364,12 @@ class KeyboardControl(object):
                     world.load_map_layer()
                 elif event.key == K_h or (event.key == K_SLASH and pygame.key.get_mods() & KMOD_SHIFT):
                     world.hud.help.toggle()
-                elif event.key == K_TAB:
-                    world.camera_manager.toggle_camera()
                 elif event.key == K_c and pygame.key.get_mods() & KMOD_SHIFT:
                     world.next_weather(reverse=True)
                 elif event.key == K_c:
                     world.next_weather()
                 elif event.key == K_g:
                     world.toggle_radar()
-                elif event.key == K_BACKQUOTE:
-                    world.camera_manager.next_sensor()
-                elif event.key == K_n:
-                    world.camera_manager.next_sensor()
                 elif event.key == K_w and (pygame.key.get_mods() & KMOD_CTRL):
                     if world.constant_velocity_enabled:
                         world.player.disable_constant_velocity()
@@ -546,14 +547,10 @@ class SimControl(object):
                     world.restart()
                 elif event.button == 1:
                     world.hud.toggle_info()
-                elif event.button == 2:
-                    world.camera_manager.toggle_camera()
                 elif event.button == 3:
                     world.next_weather()
                 elif event.button == self._reverse_idx:
                     self._control.gear = 1 if self._control.reverse else -1
-                elif event.button == 23:
-                    world.camera_manager.next_sensor()
 
             # preserve keyboard input for toggle HUD and OpenCDA Agent 
             elif event.type == pygame.KEYUP:
@@ -1086,106 +1083,145 @@ class RadarSensor(object):
 # ==============================================================================
 
 
+# class CameraSensor(object):
+#     """
+#     Single camera sensor manager for vehicle or infrastructure.
+#     """
+#     def __init__(self, parent_actor, hud, \
+#                  gamma_correction, relative_transform, bp_library):
+#         # init params
+#         self.camera_sensor = None
+#         self._parent = parent_actor
+#         self.surface = None
+#         self.hud = hud
+#         self._camera_transforms = relative_transform
+
+#         # params for save images
+#         self.surface = None
+
+#         # set camera bp
+#         bp = bp_library.find('sensor.camera.rgb')
+#         bp.set_attribute('image_size_x', str(hud.dim[0]))
+#         bp.set_attribute('image_size_y', str(hud.dim[1]))
+#         if bp.has_attribute('gamma'):
+#             bp.set_attribute('gamma', str(gamma_correction))
+#         self.bp = bp
+
+#     def set_camera(self):
+#         # spawn the camera sensors 
+#         # if self.surface is not None:
+#         #     self.surface = None
+#         self.camera_sensor = self._parent.get_world().spawn_actor(
+#             self.bp,
+#             self._camera_transforms[0],
+#             attach_to=self._parent,
+#             attachment_type=self._camera_transforms[1])
+#         # We need to pass the lambda a weak reference to self to avoid
+#         # circular reference.
+#         weak_self = weakref.ref(self)
+#         self.camera_sensor.listen(lambda image: CameraSensor._on_image_event(weak_self, image))
+#         print('a')
+#         print('############## Check camera: ' + str(self.camera_sensor))
+#         print('############## Check surface: ' + str(self.surface))
+
+#     @staticmethod
+#     def _on_image_event(weak_self, image):
+#         self = weak_self()
+#         if not self:
+#             return
+#         # parse image
+#         image.convert(cc.Raw)
+#         array = np.frombuffer(image.raw_data, dtype=np.dtype("uint8"))
+#         array = np.reshape(array, (image.height, image.width, 4))
+#         array = array[:, :, :3]
+#         array = array[:, :, ::-1]
+#         # update image
+#         self.surface = pygame.surfarray.make_surface(array.swapaxes(0, 1))
+#         print('b')
+#         print('############## Check camera: ' + str(self.camera_sensor))
+#         print('############## Check surface: ' + str(self.surface))
+#         print('############## Check array: ' + str(self.surface))
+
 class CameraManager(object):
     def __init__(self, parent_actor, hud, gamma_correction):
+        self.surface = None
         self._parent = parent_actor
+        # find bp library 
+        world = self._parent.get_world()
+        bp_library = world.get_blueprint_library()
+        self.camera_sensor_list = []
+        self.camera_bp_list = []
+        self._camera_transforms = []
+
         self.hud = hud
         self.recording = False
-        self.num_of_cameras = 1 
-        
-        # additional params for multi-screen 
-        self.surface_left = None
-        self.surface_center = None
-        self.surface_right = None
-
-        self.sensor_left = None
-        self.sensor_center = None
-        self.sensor_right = None
-
-        self.left_transform_index = 0
-        self.center_transform_index = 1
-        self.right_transform_index = 2
-            
-        # Revise Camera for the opencda sim
         bound_x = self._parent.bounding_box.extent.x
         bound_y = self._parent.bounding_box.extent.y
         bound_z = self._parent.bounding_box.extent.z
-        # interior viewing angle 
-        self._camera_transforms = [
-            # dev note: larger x --> closer to the front; larger z --> higher
-            # carla.Transform(carla.Location(x=0.075 * bound_x, y=-0.25, z=1.67 * bound_z), carla.Rotation(pitch=0.0))
-            carla.Transform(carla.Location(x=0.13 * bound_x, y=-0.25, z=1.73 * bound_z), carla.Rotation(pitch=-2.5, yaw=0.06)), # left
-            carla.Transform(carla.Location(x=0.13 * bound_x, y=-0.25, z=1.73 * bound_z), carla.Rotation(pitch=-2.5, yaw=0.06)), # center 
-            carla.Transform(carla.Location(x=0.13 * bound_x, y=-0.25, z=1.73 * bound_z), carla.Rotation(pitch=-2.5, yaw=0.06))  # right
-        ]
+        Attachment = carla.AttachmentType
 
-        self.sensor_type = ['sensor.camera.rgb', cc.Raw, 'Camera RGB', {}]
-        world = self._parent.get_world()
-        bp_library = world.get_blueprint_library()
+        # set camera bp
+        bp = bp_library.find('sensor.camera.rgb')
+        bp.set_attribute('image_size_x', str(hud.dim[0]))
+        bp.set_attribute('image_size_y', str(hud.dim[1]))
+        if bp.has_attribute('gamma'):
+            bp.set_attribute('gamma', str(gamma_correction))
+        self.camera_bp_list.append(bp)
+        
 
-        # only use one sensor; item
-        bp = bp_library.find(self.sensor_type[0])
-        if self.sensor_type[0].startswith('sensor.camera'):
-            bp.set_attribute('image_size_x', str(hud.dim[0]))
-            bp.set_attribute('image_size_y', str(hud.dim[1]))
-            if bp.has_attribute('gamma'):
-                bp.set_attribute('gamma', str(gamma_correction))
-            for attr_name, attr_value in self.sensor_type[3].items():
-                bp.set_attribute(attr_name, attr_value)
-        elif self.sensor_type[0].startswith('sensor.lidar'):
-            self.lidar_range = 50
-
-            for attr_name, attr_value in self.sensor_type[3].items():
-                bp.set_attribute(attr_name, attr_value)
-                if attr_name == 'range':
-                    self.lidar_range = float(attr_value)
-        self.sensor_type.append(bp)
+        relative_transform = (carla.Transform(carla.Location(x=0.13 * bound_x, y=-0.25, z=1.73 * bound_z), 
+                              carla.Rotation(pitch=-2.5, yaw=0.06)), 
+                              Attachment.SpringArm)    
+        self._camera_transforms.append(relative_transform)     
 
     def set_sensor(self):
-        # clear pre-existing sensors 
-        if self.sensor_left is not None or \
-           self.sensor_center is not None or \
-           self.sensor_right is not None:
-            self.sensor_left.destroy()
-            self.sensor_center.destroy()
-            self.sensor_right.destroy()
-            self.surface_left = None
-            self.surface_center = None
-            self.surface_right = None
-        # load image
-        if self.num_of_cameras == 1:
-            self.sensor_center = self._parent.get_world().spawn_actor(
-                self.sensor_type[-1],
-                self._camera_transforms[self.center_transform_index],
-                attach_to=self._parent)
+        if self.surface is not None:
+            self.surface = None
+        for i,bp in enumerate(self.camera_bp_list):
+            # spawn camera
+            camera_sensor = self._parent.get_world().spawn_actor(
+                bp,
+                self._camera_transforms[i][0],
+                attach_to=self._parent,
+                attachment_type=self._camera_transforms[i][1])
+            # populate camera sensor list
+            self.camera_sensor_list.append(camera_sensor)
             # We need to pass the lambda a weak reference to self to avoid
             # circular reference.
             weak_self = weakref.ref(self)
-            self.sensor_center.listen(lambda image: CameraManager._parse_image(weak_self, image))
+            camera_sensor.listen(lambda image: CameraManager._on_image_event(weak_self, image))
 
-    def toggle_recording(self):
-        self.recording = not self.recording
-        self.hud.notification('Recording %s' % ('On' if self.recording else 'Off'))
-
-    def render(self, display):
-        if self.surface_center is not None and \
-           self.num_of_cameras == 1:
-            display.blit(self.surface_center, (0, 0))
-        
     @staticmethod
-    def _parse_image(weak_self, image):
+    def _on_image_event(weak_self, image):
         self = weak_self()
         if not self:
             return
-        # only use RGB
-        image.convert(self.sensor_type[1])
+        # parse image
+        image.convert(cc.Raw)
         array = np.frombuffer(image.raw_data, dtype=np.dtype("uint8"))
         array = np.reshape(array, (image.height, image.width, 4))
         array = array[:, :, :3]
         array = array[:, :, ::-1]
-        # single screen 
-        if self.num_of_cameras == 1:
-            self.surface_center = pygame.surfarray.make_surface(array.swapaxes(0, 1))
+        # update image
+        self.surface = pygame.surfarray.make_surface(array.swapaxes(0, 1))
+
+    def render(self, display):
+        '''
+        Render all screens .
+        '''
+        if len(self.camera_sensor_list) == 1:
+            camera = self.camera_sensor_list[0]
+            # only one camera --> center cam
+            x_location = self.hud.dim[0]
+            print('c')
+            print('############## Check camera: ' + str(camera))
+            print('############## Check surface: ' + str(self.surface))
+            display.blit(self.surface, (x_location, 0))
+            # if camera.surface is not None:
+            #     display.blit(camera.surface, (x_location, 0))
+            # else:
+            #     print('pygame rendering is loading camera strem...')
+
 
 # ==============================================================================
 # -- pygame_loop ---------------------------------------------------------------

@@ -229,6 +229,9 @@ class World(object):
     def restart(self):
         self.player_max_speed = 1.589
         self.player_max_speed_fast = 3.713
+        # Keep same camera config if the camera manager exists.
+        cam_index = self.camera_manager.index if self.camera_manager is not None else 0
+        cam_pos_index = self.camera_manager.transform_index if self.camera_manager is not None else 0
         
         # locate OpenCDA vehicle
         print("Finding the ego vehicle...")
@@ -246,7 +249,8 @@ class World(object):
         self.gnss_sensor = GnssSensor(self.player)
         self.imu_sensor = IMUSensor(self.player)
         self.camera_manager = CameraManager(self.player, self.hud, self._gamma)
-        self.camera_manager.set_sensor()
+        self.camera_manager.transform_index = cam_pos_index
+        self.camera_manager.set_sensor(cam_index, notify=False)
         actor_type = get_actor_display_name(self.player)
         self.hud.notification(actor_type)
 
@@ -402,10 +406,58 @@ class KeyboardControl(object):
                             world.hud.notification("Enabled Vehicle Telemetry")
                         except Exception:
                             pass
+                elif event.key > K_0 and event.key <= K_9:
+                    index_ctrl = 0
+                    if pygame.key.get_mods() & KMOD_CTRL:
+                        index_ctrl = 9
+                    world.camera_manager.set_sensor(event.key - 1 - K_0 + index_ctrl)
+                elif event.key == K_r and not (pygame.key.get_mods() & KMOD_CTRL):
+                    world.camera_manager.toggle_recording()
+                elif event.key == K_r and (pygame.key.get_mods() & KMOD_CTRL):
+                    if (world.recording_enabled):
+                        client.stop_recorder()
+                        world.recording_enabled = False
+                        world.hud.notification("Recorder is OFF")
+                    else:
+                        client.start_recorder("manual_recording.rec")
+                        world.recording_enabled = True
+                        world.hud.notification("Recorder is ON")
+                elif event.key == K_p and (pygame.key.get_mods() & KMOD_CTRL):
+                    # stop recorder
+                    client.stop_recorder()
+                    world.recording_enabled = False
+                    # work around to fix camera at start of replaying
+                    current_index = world.camera_manager.index
+                    world.destroy_sensors()
+                    # replayer
+                    client.replay_file("manual_recording.rec", world.recording_start, 0, 0)
+                    world.camera_manager.set_sensor(current_index)
+                elif event.key == K_MINUS and (pygame.key.get_mods() & KMOD_CTRL):
+                    if pygame.key.get_mods() & KMOD_SHIFT:
+                        world.recording_start -= 10
+                    else:
+                        world.recording_start -= 1
+                    world.hud.notification("Recording start time is %d" % (world.recording_start))
+                elif event.key == K_EQUALS and (pygame.key.get_mods() & KMOD_CTRL):
+                    if pygame.key.get_mods() & KMOD_SHIFT:
+                        world.recording_start += 10
+                    else:
+                        world.recording_start += 1
+                    world.hud.notification("Recording start time is %d" % (world.recording_start))
+                if isinstance(self._control, carla.VehicleControl):
+                    if event.key == K_q:
+                        self._control.gear = 1 if self._control.reverse else -1
+                    elif event.key == K_m:
+                        self._control.manual_gear_shift = not self._control.manual_gear_shift
+                        self._control.gear = world.player.get_control().gear
+                        world.hud.notification('%s Transmission' %
+                                               ('Manual' if self._control.manual_gear_shift else 'Automatic'))
+                    elif self._control.manual_gear_shift and event.key == K_COMMA:
+                        self._control.gear = max(-1, self._control.gear - 1)
                     
                     # toggle opencda 
                     # option 1: manually switch 
-                    if event.key == K_p and not pygame.key.get_mods() & KMOD_CTRL:
+                    elif event.key == K_p and not pygame.key.get_mods() & KMOD_CTRL:
                         self.human_take_over = not self.human_take_over
                         world.hud.notification(
                             'OpenCDA: %s' % ('Off' if self.human_take_over else 'On'))
@@ -1088,24 +1140,12 @@ class RadarSensor(object):
 
 class CameraManager(object):
     def __init__(self, parent_actor, hud, gamma_correction):
+        self.sensor = None
+        self.surface = None
         self._parent = parent_actor
         self.hud = hud
         self.recording = False
-        self.num_of_cameras = 1 
-        
-        # additional params for multi-screen 
-        self.surface_left = None
-        self.surface_center = None
-        self.surface_right = None
 
-        self.sensor_left = None
-        self.sensor_center = None
-        self.sensor_right = None
-
-        self.left_transform_index = 0
-        self.center_transform_index = 1
-        self.right_transform_index = 2
-            
         # Revise Camera for the opencda sim
         bound_x = self._parent.bounding_box.extent.x
         bound_y = self._parent.bounding_box.extent.y
@@ -1114,78 +1154,133 @@ class CameraManager(object):
         self._camera_transforms = [
             # dev note: larger x --> closer to the front; larger z --> higher
             # carla.Transform(carla.Location(x=0.075 * bound_x, y=-0.25, z=1.67 * bound_z), carla.Rotation(pitch=0.0))
-            carla.Transform(carla.Location(x=0.13 * bound_x, y=-0.25, z=1.73 * bound_z), carla.Rotation(pitch=-2.5, yaw=0.06)), # left
-            carla.Transform(carla.Location(x=0.13 * bound_x, y=-0.25, z=1.73 * bound_z), carla.Rotation(pitch=-2.5, yaw=0.06)), # center 
-            carla.Transform(carla.Location(x=0.13 * bound_x, y=-0.25, z=1.73 * bound_z), carla.Rotation(pitch=-2.5, yaw=0.06))  # right
+            carla.Transform(carla.Location(x=0.13 * bound_x, y=-0.25, z=1.73 * bound_z), carla.Rotation(pitch=-2.5, yaw=0.06)),
+            carla.Transform(carla.Location(x=0.04 * bound_x, y=-0.25, z=1.51 * bound_z), carla.Rotation(pitch=-5.0)),
+            carla.Transform(carla.Location(x=0.04 * bound_x, y=-0.25, z=1.51 * bound_z), carla.Rotation(pitch=-15.0)),
+            carla.Transform(carla.Location(x=0.04 * bound_x, y=-0.25, z=1.51 * bound_z), carla.Rotation(pitch=5.0)),
+            carla.Transform(carla.Location(x=0.04 * bound_x, y=-0.25, z=1.51 * bound_z), carla.Rotation(pitch=15.0))
         ]
 
-        self.sensor_type = ['sensor.camera.rgb', cc.Raw, 'Camera RGB', {}]
+        self.transform_index = 1
+        self.sensors = [
+            ['sensor.camera.rgb', cc.Raw, 'Camera RGB', {}],
+            ['sensor.camera.depth', cc.Raw, 'Camera Depth (Raw)', {}],
+            ['sensor.camera.depth', cc.Depth, 'Camera Depth (Gray Scale)', {}],
+            ['sensor.camera.depth', cc.LogarithmicDepth, 'Camera Depth (Logarithmic Gray Scale)', {}],
+            ['sensor.camera.semantic_segmentation', cc.Raw, 'Camera Semantic Segmentation (Raw)', {}],
+            ['sensor.camera.semantic_segmentation', cc.CityScapesPalette, 'Camera Semantic Segmentation (CityScapes Palette)', {}],
+            ['sensor.camera.instance_segmentation', cc.CityScapesPalette, 'Camera Instance Segmentation (CityScapes Palette)', {}],
+            ['sensor.camera.instance_segmentation', cc.Raw, 'Camera Instance Segmentation (Raw)', {}],
+            ['sensor.lidar.ray_cast', None, 'Lidar (Ray-Cast)', {'range': '50'}],
+            ['sensor.camera.dvs', cc.Raw, 'Dynamic Vision Sensor', {}],
+            ['sensor.camera.rgb', cc.Raw, 'Camera RGB Distorted',
+                {'lens_circle_multiplier': '3.0',
+                'lens_circle_falloff': '3.0',
+                'chromatic_aberration_intensity': '0.5',
+                'chromatic_aberration_offset': '0'}],
+            ['sensor.camera.optical_flow', cc.Raw, 'Optical Flow', {}],
+        ]
         world = self._parent.get_world()
         bp_library = world.get_blueprint_library()
+        for item in self.sensors:
+            bp = bp_library.find(item[0])
+            if item[0].startswith('sensor.camera'):
+                bp.set_attribute('image_size_x', str(hud.dim[0]))
+                bp.set_attribute('image_size_y', str(hud.dim[1]))
+                if bp.has_attribute('gamma'):
+                    bp.set_attribute('gamma', str(gamma_correction))
+                for attr_name, attr_value in item[3].items():
+                    bp.set_attribute(attr_name, attr_value)
+            elif item[0].startswith('sensor.lidar'):
+                self.lidar_range = 50
 
-        # only use one sensor; item
-        bp = bp_library.find(self.sensor_type[0])
-        if self.sensor_type[0].startswith('sensor.camera'):
-            bp.set_attribute('image_size_x', str(hud.dim[0]))
-            bp.set_attribute('image_size_y', str(hud.dim[1]))
-            if bp.has_attribute('gamma'):
-                bp.set_attribute('gamma', str(gamma_correction))
-            for attr_name, attr_value in self.sensor_type[3].items():
-                bp.set_attribute(attr_name, attr_value)
-        elif self.sensor_type[0].startswith('sensor.lidar'):
-            self.lidar_range = 50
+                for attr_name, attr_value in item[3].items():
+                    bp.set_attribute(attr_name, attr_value)
+                    if attr_name == 'range':
+                        self.lidar_range = float(attr_value)
 
-            for attr_name, attr_value in self.sensor_type[3].items():
-                bp.set_attribute(attr_name, attr_value)
-                if attr_name == 'range':
-                    self.lidar_range = float(attr_value)
-        self.sensor_type.append(bp)
+            item.append(bp)
+        self.index = None
 
-    def set_sensor(self):
-        # clear pre-existing sensors 
-        if self.sensor_left is not None or \
-           self.sensor_center is not None or \
-           self.sensor_right is not None:
-            self.sensor_left.destroy()
-            self.sensor_center.destroy()
-            self.sensor_right.destroy()
-            self.surface_left = None
-            self.surface_center = None
-            self.surface_right = None
-        # load image
-        if self.num_of_cameras == 1:
-            self.sensor_center = self._parent.get_world().spawn_actor(
-                self.sensor_type[-1],
-                self._camera_transforms[self.center_transform_index],
+    def toggle_camera(self):
+        self.transform_index = (self.transform_index + 1) % len(self._camera_transforms)
+        self.sensor.set_transform(self._camera_transforms[self.transform_index])
+
+    def set_sensor(self, index, notify=True):
+        index = index % len(self.sensors)
+        needs_respawn = True if self.index is None else self.sensors[index][0] != self.sensors[self.index][0]
+       
+        if needs_respawn:
+            if self.sensor is not None:
+                self.sensor.destroy()
+                self.surface = None
+            self.sensor = self._parent.get_world().spawn_actor(
+                self.sensors[index][-1],
+                self._camera_transforms[self.transform_index],
                 attach_to=self._parent)
             # We need to pass the lambda a weak reference to self to avoid
             # circular reference.
             weak_self = weakref.ref(self)
-            self.sensor_center.listen(lambda image: CameraManager._parse_image(weak_self, image))
+            self.sensor.listen(lambda image: CameraManager._parse_image(weak_self, image))
+        if notify:
+            self.hud.notification(self.sensors[index][2])
+        self.index = index
+
+    def next_sensor(self):
+        self.set_sensor(self.index + 1)
 
     def toggle_recording(self):
         self.recording = not self.recording
         self.hud.notification('Recording %s' % ('On' if self.recording else 'Off'))
 
     def render(self, display):
-        if self.surface_center is not None and \
-           self.num_of_cameras == 1:
-            display.blit(self.surface_center, (0, 0))
-        
+        if self.surface is not None:
+            display.blit(self.surface, (0, 0))
+
     @staticmethod
     def _parse_image(weak_self, image):
         self = weak_self()
         if not self:
             return
-        # only use RGB
-        image.convert(self.sensor_type[1])
-        array = np.frombuffer(image.raw_data, dtype=np.dtype("uint8"))
-        array = np.reshape(array, (image.height, image.width, 4))
-        array = array[:, :, :3]
-        array = array[:, :, ::-1]
-        # single screen 
-        if self.num_of_cameras == 1:
-            self.surface_center = pygame.surfarray.make_surface(array.swapaxes(0, 1))
+        if self.sensors[self.index][0].startswith('sensor.lidar'):
+            points = np.frombuffer(image.raw_data, dtype=np.dtype('f4'))
+            points = np.reshape(points, (int(points.shape[0] / 4), 4))
+            lidar_data = np.array(points[:, :2])
+            lidar_data *= min(self.hud.dim) / (2.0 * self.lidar_range)
+            lidar_data += (0.5 * self.hud.dim[0], 0.5 * self.hud.dim[1])
+            lidar_data = np.fabs(lidar_data)  # pylint: disable=E1111
+            lidar_data = lidar_data.astype(np.int32)
+            lidar_data = np.reshape(lidar_data, (-1, 2))
+            lidar_img_size = (self.hud.dim[0], self.hud.dim[1], 3)
+            lidar_img = np.zeros((lidar_img_size), dtype=np.uint8)
+            lidar_img[tuple(lidar_data.T)] = (255, 255, 255)
+            self.surface = pygame.surfarray.make_surface(lidar_img)
+        elif self.sensors[self.index][0].startswith('sensor.camera.dvs'):
+            # Example of converting the raw_data from a carla.DVSEventArray
+            # sensor into a NumPy array and using it as an image
+            dvs_events = np.frombuffer(image.raw_data, dtype=np.dtype([
+                ('x', np.uint16), ('y', np.uint16), ('t', np.int64), ('pol', np.bool)]))
+            dvs_img = np.zeros((image.height, image.width, 3), dtype=np.uint8)
+            # Blue is positive, red is negative
+            dvs_img[dvs_events[:]['y'], dvs_events[:]['x'], dvs_events[:]['pol'] * 2] = 255
+            self.surface = pygame.surfarray.make_surface(dvs_img.swapaxes(0, 1))
+        elif self.sensors[self.index][0].startswith('sensor.camera.optical_flow'):
+            image = image.get_color_coded_flow()
+            array = np.frombuffer(image.raw_data, dtype=np.dtype("uint8"))
+            array = np.reshape(array, (image.height, image.width, 4))
+            array = array[:, :, :3]
+            array = array[:, :, ::-1]
+            self.surface = pygame.surfarray.make_surface(array.swapaxes(0, 1))
+        else:
+            image.convert(self.sensors[self.index][1])
+            array = np.frombuffer(image.raw_data, dtype=np.dtype("uint8"))
+            array = np.reshape(array, (image.height, image.width, 4))
+            array = array[:, :, :3]
+            array = array[:, :, ::-1]
+            self.surface = pygame.surfarray.make_surface(array.swapaxes(0, 1))
+        if self.recording:
+            image.save_to_disk('_out/%08d' % image.frame)
+
 
 # ==============================================================================
 # -- pygame_loop ---------------------------------------------------------------
