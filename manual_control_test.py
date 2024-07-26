@@ -285,7 +285,7 @@ class World(object):
         self.imu_sensor = IMUSensor(self.player)
         self.camera_manager = CameraManager(self.player, self.hud, self._gamma)
         self.camera_manager.transform_index = cam_pos_index
-        self.camera_manager.set_sensor()
+        self.camera_manager.set_sensor(cam_index, notify=False)
         actor_type = get_actor_display_name(self.player)
         self.hud.notification(actor_type)
 
@@ -412,18 +412,18 @@ class KeyboardControl(object):
                     world.load_map_layer()
                 elif event.key == K_h or (event.key == K_SLASH and pygame.key.get_mods() & KMOD_SHIFT):
                     world.hud.help.toggle()
-                # elif event.key == K_TAB:
-                #     world.camera_manager.toggle_camera()
+                elif event.key == K_TAB:
+                    world.camera_manager.toggle_camera()
                 elif event.key == K_c and pygame.key.get_mods() & KMOD_SHIFT:
                     world.next_weather(reverse=True)
                 elif event.key == K_c:
                     world.next_weather()
                 elif event.key == K_g:
                     world.toggle_radar()
-                # elif event.key == K_BACKQUOTE:
-                #     world.camera_manager.next_sensor()
-                # elif event.key == K_n:
-                #     world.camera_manager.next_sensor()
+                elif event.key == K_BACKQUOTE:
+                    world.camera_manager.next_sensor()
+                elif event.key == K_n:
+                    world.camera_manager.next_sensor()
                 elif event.key == K_w and (pygame.key.get_mods() & KMOD_CTRL):
                     if world.constant_velocity_enabled:
                         world.player.disable_constant_velocity()
@@ -457,6 +457,36 @@ class KeyboardControl(object):
                             world.hud.notification("Enabled Vehicle Telemetry")
                         except Exception:
                             pass
+                elif event.key > K_0 and event.key <= K_9:
+                    index_ctrl = 0
+                    if pygame.key.get_mods() & KMOD_CTRL:
+                        index_ctrl = 9
+                    world.camera_manager.set_sensor(event.key - 1 - K_0 + index_ctrl)
+                elif event.key == K_r and not (pygame.key.get_mods() & KMOD_CTRL):
+                    world.camera_manager.toggle_recording()
+                elif event.key == K_r and (pygame.key.get_mods() & KMOD_CTRL):
+                    if (world.recording_enabled):
+                        client.stop_recorder()
+                        world.recording_enabled = False
+                        world.hud.notification("Recorder is OFF")
+                    else:
+                        client.start_recorder("manual_recording.rec")
+                        world.recording_enabled = True
+                        world.hud.notification("Recorder is ON")
+                elif event.key == K_p and (pygame.key.get_mods() & KMOD_CTRL):
+                    # stop recorder
+                    client.stop_recorder()
+                    world.recording_enabled = False
+                    # work around to fix camera at start of replaying
+                    current_index = world.camera_manager.index
+                    world.destroy_sensors()
+                    # disable autopilot
+                    self._autopilot_enabled = False
+                    world.player.set_autopilot(self._autopilot_enabled)
+                    world.hud.notification("Replaying file 'manual_recording.rec'")
+                    # replayer
+                    client.replay_file("manual_recording.rec", world.recording_start, 0, 0)
+                    world.camera_manager.set_sensor(current_index)
                 elif event.key == K_MINUS and (pygame.key.get_mods() & KMOD_CTRL):
                     if pygame.key.get_mods() & KMOD_SHIFT:
                         world.recording_start -= 10
@@ -993,99 +1023,154 @@ class RadarSensor(object):
 # -- CameraManager -------------------------------------------------------------
 # ==============================================================================
 
-class CameraSensor(object):
-    """
-    Single camera sensor manager for vehicle or infrastructure.
-    """
-    def __init__(self, parent_actor, hud, \
-                 gamma_correction, relative_transform, bp_library):
-        # init params
-        self.camera_sensor = None
-        self._parent = parent_actor
-        self.surface = None
-        self.hud = hud
-        self._camera_transforms = relative_transform
-
-        # params for save images
-        self.surface = None
-
-        # set camera bp
-        bp = bp_library.find('sensor.camera.rgb')
-        bp.set_attribute('image_size_x', str(hud.dim[0]))
-        bp.set_attribute('image_size_y', str(hud.dim[1]))
-        if bp.has_attribute('gamma'):
-            bp.set_attribute('gamma', str(gamma_correction))
-        self.bp = bp
-
-    def set_camera(self):
-        # spawn the camera sensors 
-        if self.surface is not None:
-            self.surface = None
-        self.camera_sensor = self._parent.get_world().spawn_actor(
-            self.bp,
-            self._camera_transforms[0],
-            attach_to=self._parent,
-            attachment_type=self._camera_transforms[1])
-        # We need to pass the lambda a weak reference to self to avoid
-        # circular reference.
-        weak_self = weakref.ref(self)
-        self.camera_sensor.listen(lambda image: CameraSensor._on_image_event(weak_self, image))
-
-    @staticmethod
-    def _on_image_event(weak_self, image):
-        self = weak_self()
-        if not self:
-            return
-        # parse image
-        image.convert(cc.Raw)
-        array = np.frombuffer(image.raw_data, dtype=np.dtype("uint8"))
-        array = np.reshape(array, (image.height, image.width, 4))
-        array = array[:, :, :3]
-        array = array[:, :, ::-1]
-        # update image
-        self.surface = pygame.surfarray.make_surface(array.swapaxes(0, 1))
 
 class CameraManager(object):
     def __init__(self, parent_actor, hud, gamma_correction):
         self.sensor = None
         self.surface = None
         self._parent = parent_actor
-        # find bp library 
-        world = self._parent.get_world()
-        bp_library = world.get_blueprint_library()
-
         self.hud = hud
         self.recording = False
         bound_x = 0.5 + self._parent.bounding_box.extent.x
         bound_y = 0.5 + self._parent.bounding_box.extent.y
         bound_z = 0.5 + self._parent.bounding_box.extent.z
         Attachment = carla.AttachmentType
-        self.camera_list = []
 
-        # init three cameras 
-        relative_transform_c1 = (carla.Transform(carla.Location(x=-2.0*bound_x, y=+0.0*bound_y, z=2.0*bound_z), 
-                                 carla.Rotation(yaw=-30, pitch=8.0)), 
-                                 Attachment.SpringArm)
-        camera_1 = CameraSensor(parent_actor, hud, gamma_correction, relative_transform_c1, bp_library)
-        self.camera_list.append(camera_1)
+        if not self._parent.type_id.startswith("walker.pedestrian"):
+            self._camera_transforms = [
+                (carla.Transform(carla.Location(x=-2.0*bound_x, y=+0.0*bound_y, z=2.0*bound_z), carla.Rotation(pitch=8.0)), Attachment.SpringArm),
+                (carla.Transform(carla.Location(x=+0.8*bound_x, y=+0.0*bound_y, z=1.3*bound_z)), Attachment.Rigid),
+                (carla.Transform(carla.Location(x=+1.9*bound_x, y=+1.0*bound_y, z=1.2*bound_z)), Attachment.SpringArm),
+                (carla.Transform(carla.Location(x=-2.8*bound_x, y=+0.0*bound_y, z=4.6*bound_z), carla.Rotation(pitch=6.0)), Attachment.SpringArm),
+                (carla.Transform(carla.Location(x=-1.0, y=-1.0*bound_y, z=0.4*bound_z)), Attachment.Rigid)]
+        else:
+            self._camera_transforms = [
+                (carla.Transform(carla.Location(x=-2.5, z=0.0), carla.Rotation(pitch=-8.0)), Attachment.SpringArm),
+                (carla.Transform(carla.Location(x=1.6, z=1.7)), Attachment.Rigid),
+                (carla.Transform(carla.Location(x=2.5, y=0.5, z=0.0), carla.Rotation(pitch=-8.0)), Attachment.SpringArm),
+                (carla.Transform(carla.Location(x=-4.0, z=2.0), carla.Rotation(pitch=6.0)), Attachment.SpringArm),
+                (carla.Transform(carla.Location(x=0, y=-2.5, z=-0.0), carla.Rotation(yaw=90.0)), Attachment.Rigid)]
 
-        relative_transform_c2 = (carla.Transform(carla.Location(x=-2.0*bound_x, y=+0.0*bound_y, z=2.0*bound_z), 
-                                 carla.Rotation(pitch=8.0)), 
-                                 Attachment.SpringArm)         
-        camera_2 = CameraSensor(parent_actor, hud, gamma_correction, relative_transform_c2, bp_library)
-        self.camera_list.append(camera_2)
+        self.transform_index = 1
+        self.sensors = [
+            ['sensor.camera.rgb', cc.Raw, 'Camera RGB', {}],
+            ['sensor.camera.depth', cc.Raw, 'Camera Depth (Raw)', {}],
+            ['sensor.camera.depth', cc.Depth, 'Camera Depth (Gray Scale)', {}],
+            ['sensor.camera.depth', cc.LogarithmicDepth, 'Camera Depth (Logarithmic Gray Scale)', {}],
+            ['sensor.camera.semantic_segmentation', cc.Raw, 'Camera Semantic Segmentation (Raw)', {}],
+            ['sensor.camera.semantic_segmentation', cc.CityScapesPalette, 'Camera Semantic Segmentation (CityScapes Palette)', {}],
+            ['sensor.camera.instance_segmentation', cc.CityScapesPalette, 'Camera Instance Segmentation (CityScapes Palette)', {}],
+            ['sensor.camera.instance_segmentation', cc.Raw, 'Camera Instance Segmentation (Raw)', {}],
+            ['sensor.lidar.ray_cast', None, 'Lidar (Ray-Cast)', {'range': '50'}],
+            ['sensor.camera.dvs', cc.Raw, 'Dynamic Vision Sensor', {}],
+            ['sensor.camera.rgb', cc.Raw, 'Camera RGB Distorted',
+                {'lens_circle_multiplier': '3.0',
+                'lens_circle_falloff': '3.0',
+                'chromatic_aberration_intensity': '0.5',
+                'chromatic_aberration_offset': '0'}],
+            ['sensor.camera.optical_flow', cc.Raw, 'Optical Flow', {}],
+        ]
+        world = self._parent.get_world()
+        bp_library = world.get_blueprint_library()
+        for item in self.sensors:
+            bp = bp_library.find(item[0])
+            if item[0].startswith('sensor.camera'):
+                bp.set_attribute('image_size_x', str(hud.dim[0]))
+                bp.set_attribute('image_size_y', str(hud.dim[1]))
+                if bp.has_attribute('gamma'):
+                    bp.set_attribute('gamma', str(gamma_correction))
+                for attr_name, attr_value in item[3].items():
+                    bp.set_attribute(attr_name, attr_value)
+            elif item[0].startswith('sensor.lidar'):
+                self.lidar_range = 50
 
-    def set_sensor(self):
-        for i,camera in enumerate(self.camera_list):
-            camera.set_camera()
+                for attr_name, attr_value in item[3].items():
+                    bp.set_attribute(attr_name, attr_value)
+                    if attr_name == 'range':
+                        self.lidar_range = float(attr_value)
+
+            item.append(bp)
+        self.index = None
+
+    def toggle_camera(self):
+        self.transform_index = (self.transform_index + 1) % len(self._camera_transforms)
+        self.set_sensor(self.index, notify=False, force_respawn=True)
+
+    def set_sensor(self, index, notify=True, force_respawn=False):
+        index = index % len(self.sensors)
+        needs_respawn = True if self.index is None else \
+            (force_respawn or (self.sensors[index][2] != self.sensors[self.index][2]))
+        if needs_respawn:
+            if self.sensor is not None:
+                self.sensor.destroy()
+                self.surface = None
+            self.sensor = self._parent.get_world().spawn_actor(
+                self.sensors[index][-1],
+                self._camera_transforms[self.transform_index][0],
+                attach_to=self._parent,
+                attachment_type=self._camera_transforms[self.transform_index][1])
+            # We need to pass the lambda a weak reference to self to avoid
+            # circular reference.
+            weak_self = weakref.ref(self)
+            self.sensor.listen(lambda image: CameraManager._parse_image(weak_self, image))
+        if notify:
+            self.hud.notification(self.sensors[index][2])
+        self.index = index
+
+    def next_sensor(self):
+        self.set_sensor(self.index + 1)
+
+    def toggle_recording(self):
+        self.recording = not self.recording
+        self.hud.notification('Recording %s' % ('On' if self.recording else 'Off'))
 
     def render(self, display):
-        '''
-        Render all screens .
-        '''
-        for i,camera in enumerate(self.camera_list):
-            x_location = self.hud.dim[0]*i
-            display.blit(camera.surface, (x_location, 0))
+        if self.surface is not None:
+            display.blit(self.surface, (0, 0))
+
+    @staticmethod
+    def _parse_image(weak_self, image):
+        self = weak_self()
+        if not self:
+            return
+        if self.sensors[self.index][0].startswith('sensor.lidar'):
+            points = np.frombuffer(image.raw_data, dtype=np.dtype('f4'))
+            points = np.reshape(points, (int(points.shape[0] / 4), 4))
+            lidar_data = np.array(points[:, :2])
+            lidar_data *= min(self.hud.dim) / (2.0 * self.lidar_range)
+            lidar_data += (0.5 * self.hud.dim[0], 0.5 * self.hud.dim[1])
+            lidar_data = np.fabs(lidar_data)  # pylint: disable=E1111
+            lidar_data = lidar_data.astype(np.int32)
+            lidar_data = np.reshape(lidar_data, (-1, 2))
+            lidar_img_size = (self.hud.dim[0], self.hud.dim[1], 3)
+            lidar_img = np.zeros((lidar_img_size), dtype=np.uint8)
+            lidar_img[tuple(lidar_data.T)] = (255, 255, 255)
+            self.surface = pygame.surfarray.make_surface(lidar_img)
+        elif self.sensors[self.index][0].startswith('sensor.camera.dvs'):
+            # Example of converting the raw_data from a carla.DVSEventArray
+            # sensor into a NumPy array and using it as an image
+            dvs_events = np.frombuffer(image.raw_data, dtype=np.dtype([
+                ('x', np.uint16), ('y', np.uint16), ('t', np.int64), ('pol', np.bool)]))
+            dvs_img = np.zeros((image.height, image.width, 3), dtype=np.uint8)
+            # Blue is positive, red is negative
+            dvs_img[dvs_events[:]['y'], dvs_events[:]['x'], dvs_events[:]['pol'] * 2] = 255
+            self.surface = pygame.surfarray.make_surface(dvs_img.swapaxes(0, 1))
+        elif self.sensors[self.index][0].startswith('sensor.camera.optical_flow'):
+            image = image.get_color_coded_flow()
+            array = np.frombuffer(image.raw_data, dtype=np.dtype("uint8"))
+            array = np.reshape(array, (image.height, image.width, 4))
+            array = array[:, :, :3]
+            array = array[:, :, ::-1]
+            self.surface = pygame.surfarray.make_surface(array.swapaxes(0, 1))
+        else:
+            image.convert(self.sensors[self.index][1])
+            array = np.frombuffer(image.raw_data, dtype=np.dtype("uint8"))
+            array = np.reshape(array, (image.height, image.width, 4))
+            array = array[:, :, :3]
+            array = array[:, :, ::-1]
+            self.surface = pygame.surfarray.make_surface(array.swapaxes(0, 1))
+        if self.recording:
+            image.save_to_disk('_out/%08d' % image.frame)
 
 
 # ==============================================================================
@@ -1119,9 +1204,8 @@ def game_loop(args):
             print("WARNING: You are currently in asynchronous mode and could "
                   "experience some issues with the traffic simulation")
 
-        # wider display for additional screen
         display = pygame.display.set_mode(
-            (args.width*2, args.height),
+            (args.width, args.height),
             pygame.HWSURFACE | pygame.DOUBLEBUF)
         display.fill((0,0,0))
         pygame.display.flip()
@@ -1191,9 +1275,8 @@ def main():
     argparser.add_argument(
         '--res',
         metavar='WIDTHxHEIGHT',
-        # default='1280x720',
-        default='960x540',
-        help='window resolution (default: 960x540)')
+        default='1280x720',
+        help='window resolution (default: 1280x720)')
     argparser.add_argument(
         '--filter',
         metavar='PATTERN',
@@ -1221,7 +1304,7 @@ def main():
     args = argparser.parse_args()
 
     args.width, args.height = [int(x) for x in args.res.split('x')]
-    
+
     log_level = logging.DEBUG if args.debug else logging.INFO
     logging.basicConfig(format='%(levelname)s: %(message)s', level=log_level)
 

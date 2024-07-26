@@ -637,10 +637,6 @@ class SimControl(object):
         K1 = 1.0  # 0.55
         steerCmd = K1 * math.tan(1.1 * jsInputs[self._steer_idx])
 
-        # update control method based on steering input 
-        if abs(steerCmd) >= 0.006:
-            self.human_take_over = True
-
         K2 = 1.6  # 1.6
         throttleCmd = K2 + (2.05 * math.log10(
             -0.7 * jsInputs[self._throttle_idx] + 1.4) - 1.2) / 0.92
@@ -656,6 +652,12 @@ class SimControl(object):
         elif brakeCmd > 1:
             brakeCmd = 1
 
+         # update control method based on steering input 
+        if abs(steerCmd) >= 0.006 or\
+           abs(brakeCmd) >= 0.05:
+            self.human_take_over = True
+
+        # assign final controls
         self._control.steer = steerCmd
         self._control.brake = brakeCmd
         self._control.throttle = throttleCmd
@@ -819,9 +821,9 @@ class HUD(object):
 
             # Blit the text onto the display
             display.blit(speed_value_surface, (speed_center[0] - speed_value_surface.get_width() // 2 - 120, \
-                                               speed_center[1] - speed_value_surface.get_height() // 2))
+                                               speed_center[1] - speed_value_surface.get_height() // 2 - 12))
             display.blit(driving_mode_surface, (mode_center[0] - driving_mode_surface.get_width() // 2, \
-                                                mode_center[1] - driving_mode_surface.get_height() // 2))
+                                                mode_center[1] - driving_mode_surface.get_height() // 2 - 12))
 
             # 2. Existing renders 
             info_surface = pygame.Surface((220, self.dim[1]))
@@ -1151,7 +1153,8 @@ class CameraManager(object):
         # interior viewing angle 
         self._camera_transforms = [
             # dev note: larger x --> closer to the front; larger z --> higher
-            carla.Transform(carla.Location(x=0.075 * bound_x, y=-0.25, z=1.67 * bound_z), carla.Rotation(pitch=0.0)),
+            # carla.Transform(carla.Location(x=0.075 * bound_x, y=-0.25, z=1.67 * bound_z), carla.Rotation(pitch=0.0))
+            carla.Transform(carla.Location(x=0.13 * bound_x, y=-0.25, z=1.73 * bound_z), carla.Rotation(pitch=-2.5, yaw=0.06)),
             carla.Transform(carla.Location(x=0.04 * bound_x, y=-0.25, z=1.51 * bound_z), carla.Rotation(pitch=-5.0)),
             carla.Transform(carla.Location(x=0.04 * bound_x, y=-0.25, z=1.51 * bound_z), carla.Rotation(pitch=-15.0)),
             carla.Transform(carla.Location(x=0.04 * bound_x, y=-0.25, z=1.51 * bound_z), carla.Rotation(pitch=5.0)),
