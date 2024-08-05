@@ -184,6 +184,7 @@ class World(object):
         self.world = carla_world
         self.sync = args.sync
         self.actor_role_name = args.rolename
+        self.num_screens = args.num_screens
         try:
             self.map = self.world.get_map()
         except RuntimeError as error:
@@ -245,7 +246,7 @@ class World(object):
         self.lane_invasion_sensor = LaneInvasionSensor(self.player, self.hud)
         self.gnss_sensor = GnssSensor(self.player)
         self.imu_sensor = IMUSensor(self.player)
-        self.camera_manager = CameraManager(self.player, self.hud, self._gamma)
+        self.camera_manager = CameraManager(self.player, self.hud, self._gamma, self.num_screens)
         self.camera_manager.set_sensor()
         actor_type = get_actor_display_name(self.player)
         self.hud.notification(actor_type)
@@ -582,7 +583,7 @@ class SimControl(object):
 
         # Custom function to map range of inputs [1, -1] to outputs [0, 1] i.e 1 from inputs means nothing is pressed
         # For the steering, it seems fine as it is
-        K1 = 1.0  # 0.55
+        K1 = 0.6  # 0.55
         steerCmd = K1 * math.tan(1.1 * jsInputs[self._steer_idx])
 
         K2 = 1.6  # 1.6
@@ -601,7 +602,7 @@ class SimControl(object):
             brakeCmd = 1
 
          # update control method based on steering input 
-        if abs(steerCmd) >= 0.006 or\
+        if abs(steerCmd) >= 0.06 or\
            abs(brakeCmd) >= 0.05:
             self.human_take_over = True
 
@@ -1087,11 +1088,11 @@ class RadarSensor(object):
 
 
 class CameraManager(object):
-    def __init__(self, parent_actor, hud, gamma_correction):
+    def __init__(self, parent_actor, hud, gamma_correction, num_of_cameras):
         self._parent = parent_actor
         self.hud = hud
         self.recording = False
-        self.num_of_cameras = 1 
+        self.num_of_cameras = num_of_cameras
         
         # additional params for multi-screen 
         self.surface_left = None
@@ -1162,15 +1163,56 @@ class CameraManager(object):
             # circular reference.
             weak_self = weakref.ref(self)
             self.sensor_center.listen(lambda image: CameraManager._parse_image(weak_self, image))
+        
+        # three cams 
+        if self.num_of_cameras == 3: 
+            # left 
+            self.sensor_left = self._parent.get_world().spawn_actor(
+                self.sensor_type[-1],
+                self._camera_transforms[self.left_transform_index],
+                attach_to=self._parent)
+            # weak reference to camera image
+            weak_self_left = weakref.ref(self)
+            self.sensor_left.listen(lambda image: \
+                    CameraManager._parse_image_left(weak_self_left, image))
+
+            # center 
+            self.sensor_center = self._parent.get_world().spawn_actor(
+                self.sensor_type[-1],
+                self._camera_transforms[self.center_transform_index],
+                attach_to=self._parent)
+            # weak reference to camera image
+            weak_self_center = weakref.ref(self)
+            self.sensor_center.listen(lambda image: \
+                    CameraManager._parse_image(weak_self_center, image))
+
+            # right 
+            self.sensor_right = self._parent.get_world().spawn_actor(
+                self.sensor_type[-1],
+                self._camera_transforms[self.right_transform_index],
+                attach_to=self._parent)
+            # weak reference to camera image
+            weak_self_right = weakref.ref(self)
+            self.sensor_right.listen(lambda image: \
+                    CameraManager._parse_image_right(weak_self_right, image))
 
     def toggle_recording(self):
         self.recording = not self.recording
         self.hud.notification('Recording %s' % ('On' if self.recording else 'Off'))
 
     def render(self, display):
+        # render 1 screen 
         if self.surface_center is not None and \
            self.num_of_cameras == 1:
             display.blit(self.surface_center, (0, 0))
+        # render 3 screens
+        if self.surface_left is not None and\
+           self.surface_center is not None and\
+           self.surface_right is not None and\
+            self.num_of_cameras == 3:
+            display.blit(self.surface_left, (0, 0))
+            display.blit(self.surface_center, (self.hud.dim[0]*1, 0))
+            display.blit(self.surface_right, (self.hud.dim[0]*2, 0))
         
     @staticmethod
     def _parse_image(weak_self, image):
@@ -1183,9 +1225,33 @@ class CameraManager(object):
         array = np.reshape(array, (image.height, image.width, 4))
         array = array[:, :, :3]
         array = array[:, :, ::-1]
-        # single screen 
-        if self.num_of_cameras == 1:
-            self.surface_center = pygame.surfarray.make_surface(array.swapaxes(0, 1))
+        self.surface_center = pygame.surfarray.make_surface(array.swapaxes(0, 1))
+
+    @staticmethod
+    def _parse_image_left(weak_self, image):
+        self = weak_self()
+        if not self:
+            return
+        # only use RGB
+        image.convert(self.sensor_type[1])
+        array = np.frombuffer(image.raw_data, dtype=np.dtype("uint8"))
+        array = np.reshape(array, (image.height, image.width, 4))
+        array = array[:, :, :3]
+        array = array[:, :, ::-1]
+        self.surface_left = pygame.surfarray.make_surface(array.swapaxes(0,1))
+    
+    @staticmethod
+    def _parse_image_right(weak_self, image):
+        self = weak_self()
+        if not self:
+            return
+        # only use RGB
+        image.convert(self.sensor_type[1])
+        array = np.frombuffer(image.raw_data, dtype=np.dtype("uint8"))
+        array = np.reshape(array, (image.height, image.width, 4))
+        array = array[:, :, :3]
+        array = array[:, :, ::-1]
+        self.surface_right = pygame.surfarray.make_surface(array.swapaxes(0,1))
 
 # ==============================================================================
 # -- pygame_loop ---------------------------------------------------------------
@@ -1205,11 +1271,18 @@ def pygame_loop(input_queue, output_queue):
         client.set_timeout(20.0)
         sim_world = client.get_world()
 
-        display = pygame.display.set_mode(
-            (args.width, args.height),
-            pygame.HWSURFACE | pygame.DOUBLEBUF)
-        display.fill((0,0,0))
-        pygame.display.flip()
+        if args.num_screens == 1:
+            display = pygame.display.set_mode(
+                (args.width, args.height),
+                pygame.HWSURFACE | pygame.DOUBLEBUF)
+            display.fill((0,0,0))
+            pygame.display.flip()
+        elif args.num_screens == 3:
+            display = pygame.display.set_mode(
+                (args.width*3, args.height),
+                pygame.HWSURFACE | pygame.DOUBLEBUF)
+            display.fill((0,0,0))
+            pygame.display.flip()
 
         hud = HUD(args.width, args.height)
         world = World(sim_world, hud, args)

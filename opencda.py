@@ -67,6 +67,10 @@ def arg_parse():
     parser.add_argument("--sim_wheel_config_path",
                         action='store_true',
                         help='config file path for the sim wheel.')
+    parser.add_argument("--num_screens",
+                        default=1,
+                        type=int,
+                        help='Number of screens rendered by pygame.')
 
     # add pygame arguments to parser 
     parser.add_argument(
