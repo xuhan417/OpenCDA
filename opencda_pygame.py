@@ -41,7 +41,7 @@ from opencda.scenario_testing.utils.yaml_utils import \
     add_current_time
 
 # pygame render
-from opencda.core.common.pygame_render import World, HUD, KeyboardControl
+from opencda.core.common.pygame_render import World, HUD, KeyboardControl, pygame_loop
 
 # from opencda.core.plan.behavior_agent_carla import BehaviorAgent  # pylint: disable=import-error
 # from opencda.core.plan.roaming_agent import RoamingAgent  # pylint: disable=import-error
@@ -118,55 +118,61 @@ def pygame_loop(args):
 def pygame_main():
     """Main method"""
 
-    argparser = argparse.ArgumentParser(
-        description='CARLA Automatic Control Client')
-    argparser.add_argument(
+    # create an argument parser
+    parser = argparse.ArgumentParser(description="OpenCDA scenario runner.")
+
+    # add pygame arguments to parser 
+    parser.add_argument(
         '--host',
         metavar='H',
         default='127.0.0.1',
         help='IP of the host server (default: 127.0.0.1)')
-    argparser.add_argument(
+    parser.add_argument(
         '-p', '--port',
         metavar='P',
         default=2000,
         type=int,
         help='TCP port to listen to (default: 2000)')
-    argparser.add_argument(
+    parser.add_argument(
+        '-a', '--autopilot',
+        action='store_true',
+        help='enable autopilot')
+    parser.add_argument(
         '--res',
         metavar='WIDTHxHEIGHT',
-        default='1280x720',
-        help='Window resolution (default: 1280x720)')
-    argparser.add_argument(
+        default='1920x1080',
+        help='window resolution (default: 1920x1080)')
+    parser.add_argument(
         '--filter',
         metavar='PATTERN',
         default='vehicle.*',
-        help='Actor filter (default: "vehicle.*")')
-    argparser.add_argument(
+        help='actor filter (default: "vehicle.*")')
+    parser.add_argument(
+        '--generation',
+        metavar='G',
+        default='2',
+        help='restrict to certain actor generation (values: "1","2","All" - default: "2")')
+    parser.add_argument(
+        '--rolename',
+        metavar='NAME',
+        default='hero',
+        help='actor role name (default: "hero")')
+    parser.add_argument(
         '--gamma',
         default=2.2,
         type=float,
         help='Gamma correction of the camera (default: 2.2)')
-    argparser.add_argument(
-        '-l', '--loop',
-        action='store_true',
-        dest='loop',
-        help='Sets a new random destination upon reaching the previous one (default: False)')
-    argparser.add_argument(
-        '-b', '--behavior', type=str,
-        choices=["cautious", "normal", "aggressive"],
-        help='Choose one of the possible agent behaviors (default: normal) ',
-        default='normal')
-    argparser.add_argument("-a", "--agent", type=str,
-                           choices=["Behavior", "Roaming", "Basic"],
-                           help="select which agent to run",
-                           default="Behavior")
-    argparser.add_argument(
-        '-s', '--seed',
-        help='Set seed for repeating executions (default: None)',
-        default=None,
-        type=int)
+    parser.add_argument(
+        '--sync',
+        action='store_false',
+        help='Activate synchronous mode execution')
+    parser.add_argument("--num_screens",
+                        default=1,
+                        type=int,
+                        help='Number of screens rendered by pygame.')
 
-    args = argparser.parse_args()
+    # parse the arguments and return the result
+    args = parser.parse_args()
 
     args.width, args.height = [int(x) for x in args.res.split('x')]
 

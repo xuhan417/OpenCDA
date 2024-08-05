@@ -60,6 +60,8 @@ class CameraSensor:
 
         blueprint = world.get_blueprint_library().find('sensor.camera.rgb')
         blueprint.set_attribute('fov', '100')
+        blueprint.set_attribute('image_size_x', '1920')
+        blueprint.set_attribute('image_size_y', '1080')
 
         spawn_point = self.spawn_point_estimation(relative_position,
                                                   global_position)
@@ -628,7 +630,9 @@ class PerceptionManager:
                                                                rgb_image,
                                                                i)
                 # resize to make it fittable to the screen
-                rgb_image = cv2.resize(rgb_image, (0, 0), fx=0.4, fy=0.4)
+                # rgb_image = cv2.resize(rgb_image, (0, 0), fx=0.4, fy=0.4) 
+                # adjust for risk project
+                rgb_image = cv2.resize(rgb_image, (0, 0), fx=1.2, fy=1.2)
 
                 # show image using cv2
                 cv2.imshow(

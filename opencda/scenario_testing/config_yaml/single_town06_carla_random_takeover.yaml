@@ -15,10 +15,14 @@ vehicle_base:
   sensing:
     perception:
       camera:
-        visualize: 0
-        num: 0 # how many cameras are mounted on the vehicle. Maximum 3(frontal, left and right cameras)
+        visualize: 2
+        num: 2 # how many cameras are mounted on the vehicle. Maximum 3(frontal, left and right cameras)
         # relative positions (x,y,z,yaw) of the camera. len(positions) should be equal to camera num
-        positions: []
+        positions: 
+          - [0.0, 0.3, 1.8, 100]
+          - [0.0, -0.3, 1.8, -100]
+      lidar: # lidar sensor configuration, check CARLA sensor reference for more details
+        visualize: false
   behavior:
     max_speed: 55 # maximum speed, km/h
     safety_time: 4 # ttc safety thresholding for decreasing speed
