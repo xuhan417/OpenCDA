@@ -1088,11 +1088,11 @@ class RadarSensor(object):
 
 
 class CameraManager(object):
-    def __init__(self, parent_actor, hud, gamma_correction, num_of_cameras):
+    def __init__(self, parent_actor, hud, gamma_correction, num_screens):
         self._parent = parent_actor
         self.hud = hud
         self.recording = False
-        self.num_of_cameras = num_of_cameras
+        self.num_of_cameras = num_screens
         
         # additional params for multi-screen 
         self.surface_left = None
@@ -1120,7 +1120,18 @@ class CameraManager(object):
             carla.Transform(carla.Location(x=0.13 * bound_x, y=-0.25, z=1.73 * bound_z), carla.Rotation(pitch=-2.5, yaw=0.06))  # right
         ]
 
-        self.sensor_type = ['sensor.camera.rgb', cc.Raw, 'Camera RGB', {}]
+        # adjust fov for camera 
+        if self.num_of_cameras == 1:
+            self.sensor_type = ['sensor.camera.rgb', 
+                                cc.Raw, 
+                                'Camera RGB', 
+                                {'fov': str(120)}]
+        else: 
+            self.sensor_type = ['sensor.camera.rgb', 
+                                cc.Raw, 
+                                'Camera RGB', 
+                                {}]
+
         world = self._parent.get_world()
         bp_library = world.get_blueprint_library()
 
