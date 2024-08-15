@@ -1115,9 +1115,9 @@ class CameraManager(object):
         self._camera_transforms = [
             # dev note: larger x --> closer to the front; larger z --> higher
             # carla.Transform(carla.Location(x=0.075 * bound_x, y=-0.25, z=1.67 * bound_z), carla.Rotation(pitch=0.0))
-            carla.Transform(carla.Location(x=0.13 * bound_x, y=-0.25, z=1.73 * bound_z), carla.Rotation(pitch=-2.5, yaw=0.06)), # left
-            carla.Transform(carla.Location(x=0.13 * bound_x, y=-0.25, z=1.73 * bound_z), carla.Rotation(pitch=-2.5, yaw=0.06)), # center 
-            carla.Transform(carla.Location(x=0.13 * bound_x, y=-0.25, z=1.73 * bound_z), carla.Rotation(pitch=-2.5, yaw=0.06))  # right
+            carla.Transform(carla.Location(x=0.15 * bound_x, y=-0.25, z=1.71 * bound_z), carla.Rotation(pitch=-2.5, yaw=0.06)), # left
+            carla.Transform(carla.Location(x=0.15 * bound_x, y=-0.25, z=1.71 * bound_z), carla.Rotation(pitch=-2.5, yaw=0.06)), # center 
+            carla.Transform(carla.Location(x=0.15 * bound_x, y=-0.25, z=1.71 * bound_z), carla.Rotation(pitch=-2.5, yaw=0.06))  # right
         ]
 
         # adjust fov for camera 
@@ -1125,7 +1125,7 @@ class CameraManager(object):
             self.sensor_type = ['sensor.camera.rgb', 
                                 cc.Raw, 
                                 'Camera RGB', 
-                                {'fov': str(120)}]
+                                {'fov': str(100)}]
         else: 
             self.sensor_type = ['sensor.camera.rgb', 
                                 cc.Raw, 
