@@ -641,6 +641,18 @@ class HUD(object):
         self._font_xlarge_bold.set_bold(True)
 
         self._notifications = FadingText(font, (width, 40), (0, height - 40))
+        # warning 
+        # Set the position of the circles
+        self.notification_circle_radius = 75
+        self.speed_center = ((self.dim[0] - 2 * self.notification_circle_radius) // 2 + 330, \
+                             (self.dim[1] - 2 * self.notification_circle_radius) // 2 + 320)
+        self.mode_center = ((self.dim[0] - 2 * self.notification_circle_radius) // 2 - 75, \
+                            (self.dim[1] - 2 * self.notification_circle_radius) // 2 + 320)
+        warning_width = abs(self.mode_center[0] - self.speed_center[0])
+        self._warnings = WarningText(font, (warning_width, 40), \
+                                           (self.mode_center[0], \
+                                            self.mode_center[1]-self.notification_circle_radius-50))
+
         self.help = HelpText(pygame.font.Font(mono, 16), width, height)
         self.server_fps = 0
         self.frame = 0
@@ -652,9 +664,9 @@ class HUD(object):
         # text for opencda sim
         self.speed_text = ""
         self.driving_mode = "OpenCDA"
-        self._show_warning = False  
-        self._warning_text = ""     
-        self._warning_time = 0  
+        # self._show_warning = False  
+        # self._warning_text = ""     
+        # self._warning_time = 0  
 
     def on_world_tick(self, timestamp):
         self._server_clock.tick()
@@ -664,6 +676,8 @@ class HUD(object):
 
     def tick(self, world, clock):
         self._notifications.tick(world, clock)
+        self._warnings.tick(world, clock)
+
         if not self._show_info:
             return
         t = world.player.get_transform()
@@ -732,13 +746,16 @@ class HUD(object):
     def notification(self, text, seconds=2.0):
         self._notifications.set_text(text, seconds=seconds)
 
-    def show_warning(self, text, seconds=2.0):
-        '''
-        Show warnings for the opencda sim. 
-        '''
-        self._warning_text = text
-        self._warning_time = seconds
-        self._show_warning = True
+    def trigger_warning(self, text, seconds=3.0):
+        self._warnings.set_text(text, seconds=seconds)
+
+    # def show_warning(self, text, seconds=2.0):
+    #     '''
+    #     Show warnings for the opencda sim. 
+    #     '''
+    #     self._warning_text = text
+    #     self._warning_time = seconds
+    #     self._show_warning = True
 
     def error(self, text):
         self._notifications.set_text('Error: %s' % text, (255, 0, 0))
@@ -754,25 +771,24 @@ class HUD(object):
             speed_value_surface = self._font_xlarge_bold.render(self.speed_text, True, (255, 255, 255))
             driving_mode_surface = self._font_large_bold.render(self.driving_mode, True, (255, 255, 255))
 
-            # Define the radius of the circles
-            circle_radius = 75
-
-            # Set the position of the circles
-            speed_center = ((self.dim[0] - 2 * circle_radius) // 2 + 330, (self.dim[1] - 2 * circle_radius) // 2 + 320)
-            mode_center = ((self.dim[0] - 2 * circle_radius) // 2 - 75, (self.dim[1] - 2 * circle_radius) // 2 + 320)
+            # # Define the radius of the circles
+            # circle_radius = 75
+            # # Set the position of the circles
+            # speed_center = ((self.dim[0] - 2 * circle_radius) // 2 + 330, (self.dim[1] - 2 * circle_radius) // 2 + 320)
+            # mode_center = ((self.dim[0] - 2 * circle_radius) // 2 - 75, (self.dim[1] - 2 * circle_radius) // 2 + 320)
 
             # Set the color based on the driving mode
             mode_color = (0, 255, 0) if self.driving_mode == "OpenCDA" else (255, 0, 0)
 
             # Draw the circles
-            pygame.draw.circle(display, (16, 117, 89), speed_center, circle_radius)
-            pygame.draw.circle(display, mode_color, mode_center, circle_radius)
+            pygame.draw.circle(display, (16, 117, 89), self.speed_center, self.notification_circle_radius)
+            pygame.draw.circle(display, mode_color, self.mode_center, self.notification_circle_radius)
 
             # Blit the text onto the display
-            display.blit(speed_value_surface, (speed_center[0] - speed_value_surface.get_width() // 2 - 120, \
-                                               speed_center[1] - speed_value_surface.get_height() // 2 - 12))
-            display.blit(driving_mode_surface, (mode_center[0] - driving_mode_surface.get_width() // 2, \
-                                                mode_center[1] - driving_mode_surface.get_height() // 2 - 12))
+            display.blit(speed_value_surface, (self.speed_center[0] - speed_value_surface.get_width() // 2 - 120, \
+                                               self.speed_center[1] - speed_value_surface.get_height() // 2 - 12))
+            display.blit(driving_mode_surface, (self.mode_center[0] - driving_mode_surface.get_width() // 2, \
+                                                self.mode_center[1] - driving_mode_surface.get_height() // 2 - 12))
 
             # 2. Existing renders 
             info_surface = pygame.Surface((220, self.dim[1]))
@@ -809,14 +825,15 @@ class HUD(object):
                     display.blit(surface, (8, v_offset))
                 v_offset += 18
         self._notifications.render(display)
+        self._warnings.render(display)
         self.help.render(display)
 
-        # 3. display warnings 
-        if self._show_warning:
-            warning_surface = self._font_large_bold.render(self._warning_text, True, (0, 0, 0))
-            warning_rect = warning_surface.get_rect(center=(self.dim[0] // 2, self.dim[1] // 2))
-            pygame.draw.rect(display, (255, 255, 0), warning_rect.inflate(20, 20))
-            display.blit(warning_surface, warning_rect)
+        # # 3. display warnings 
+        # if self._show_warning:
+        #     warning_surface = self._font_large_bold.render(self._warning_text, True, (0, 0, 0))
+        #     warning_rect = warning_surface.get_rect(center=(self.dim[0] // 2, self.dim[1] // 2))
+        #     pygame.draw.rect(display, (255, 255, 0), warning_rect.inflate(20, 20))
+        #     display.blit(warning_surface, warning_rect)
 
 
 # ==============================================================================
@@ -837,6 +854,35 @@ class FadingText(object):
         self.surface = pygame.Surface(self.dim)
         self.seconds_left = seconds
         self.surface.fill((0, 0, 0, 0))
+        self.surface.blit(text_texture, (10, 11))
+
+    def tick(self, _, clock):
+        delta_seconds = 1e-3 * clock.get_time()
+        self.seconds_left = max(0.0, self.seconds_left - delta_seconds)
+        self.surface.set_alpha(500.0 * self.seconds_left)
+
+    def render(self, display):
+        display.blit(self.surface, self.pos)
+
+
+# ==============================================================================
+# -- WarningText ----------------------------------------------------------------
+# ==============================================================================
+
+
+class WarningText(object):
+    def __init__(self, font, dim, pos):
+        self.font = font
+        self.dim = dim
+        self.pos = pos
+        self.seconds_left = 0
+        self.surface = pygame.Surface(self.dim)
+
+    def set_text(self, text, color=(207, 0, 15), seconds=5.0):
+        text_texture = self.font.render(text, True, color)
+        self.surface = pygame.Surface(self.dim)
+        self.seconds_left = seconds
+        self.surface.fill((252, 214, 112, 0))
         self.surface.blit(text_texture, (10, 11))
 
     def tick(self, _, clock):
@@ -1088,11 +1134,11 @@ class RadarSensor(object):
 
 
 class CameraManager(object):
-    def __init__(self, parent_actor, hud, gamma_correction, num_screens):
+    def __init__(self, parent_actor, hud, gamma_correction, num_of_cameras):
         self._parent = parent_actor
         self.hud = hud
         self.recording = False
-        self.num_of_cameras = num_screens
+        self.num_of_cameras = num_of_cameras
         
         # additional params for multi-screen 
         self.surface_left = None
@@ -1120,18 +1166,7 @@ class CameraManager(object):
             carla.Transform(carla.Location(x=0.15 * bound_x, y=-0.25, z=1.71 * bound_z), carla.Rotation(pitch=-2.5, yaw=0.06))  # right
         ]
 
-        # adjust fov for camera 
-        if self.num_of_cameras == 1:
-            self.sensor_type = ['sensor.camera.rgb', 
-                                cc.Raw, 
-                                'Camera RGB', 
-                                {'fov': str(100)}]
-        else: 
-            self.sensor_type = ['sensor.camera.rgb', 
-                                cc.Raw, 
-                                'Camera RGB', 
-                                {}]
-
+        self.sensor_type = ['sensor.camera.rgb', cc.Raw, 'Camera RGB', {}]
         world = self._parent.get_world()
         bp_library = world.get_blueprint_library()
 
@@ -1276,6 +1311,8 @@ def pygame_loop(input_queue, output_queue):
     original_settings = None
     # get args
     args = input_queue.get()
+    count = 0
+    is_tailgate = False
 
     try:
         client = carla.Client(args.host, args.port)
@@ -1307,6 +1344,7 @@ def pygame_loop(input_queue, output_queue):
         
         clock = pygame.time.Clock()
         while True:
+            count += 1
             # init render clock
             clock.tick_busy_loop(60)
 
@@ -1321,6 +1359,15 @@ def pygame_loop(input_queue, output_queue):
             world.tick(clock)
             world.render(display)
             pygame.display.flip()
+
+            # update tailgate 
+            sim_time = count*0.05
+            if sim_time == 3:
+                # use 10 for tests
+                is_tailgate = True
+                print('[Pygame Side]: Tailgate signal send, human takeover !!!')
+            if sim_time == 7:
+                hud.trigger_warning('WARNING: BRAKE', 3)
 
             # update take over state 
             if args.sim_wheel:
@@ -1346,6 +1393,7 @@ def pygame_loop(input_queue, output_queue):
                 output_dict['brake'] = controller._control.brake
                 output_dict['hand_brake'] = controller._control.hand_brake
                 output_dict['reverse'] = controller._control.reverse
+            output_dict['is_tailgate'] = is_tailgate
             # send to main loop
             output_queue.put(output_dict)
 
