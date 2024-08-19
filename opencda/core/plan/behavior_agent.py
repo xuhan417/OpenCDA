@@ -203,7 +203,7 @@ class BehaviorAgent(object):
         '''
         self.reduce_ttc = True
         # initiate a new collision checker
-        new_collision_time = 0.1*self.collision_time_ahead
+        new_collision_time = 0.35*self.collision_time_ahead
         self._collision_check = CollisionChecker(time_ahead=new_collision_time)
         self._collision_check.reduce_lookahead_distance(0.5)
 

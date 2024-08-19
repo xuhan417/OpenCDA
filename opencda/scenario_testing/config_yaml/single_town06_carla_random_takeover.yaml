@@ -7,7 +7,7 @@ description: |-
 world:
   sync_mode: true
   client_port: 2000
-  fixed_delta_seconds: 0.04
+  fixed_delta_seconds: 0.05
   seed: 11 # seed for numpy and random
 
 # First define the basic parameters of the vehicles
@@ -26,10 +26,26 @@ vehicle_base:
   behavior:
     max_speed: 55 # maximum speed, km/h
     safety_time: 4 # ttc safety thresholding for decreasing speed
-    ignore_traffic_light: true # whether to ignore traffic light
+    ignore_traffic_light: false # whether to ignore traffic light
     collision_time_ahead: 1.5 # used for collision checking
     overtake_allowed: false # whether overtake allowed, typically false for platoon leader
-    
+  controller:
+    type: pid_controller # this has to be exactly the same name as the controller py file
+    args:
+      lat:
+        k_p: 0.75
+        k_d: 0.02
+        k_i: 0.4
+      lon:
+        # k_p: 0.37
+        k_p: 0.28
+        k_d: 0.024
+        k_i: 0.032
+      dynamic: false # whether use dynamic pid setting
+      dt: ${world.fixed_delta_seconds} # this should be equal to your simulation time-step
+      max_brake: 0.85
+      max_throttle: 0.85
+      max_steering: 0.3
 # define the background traffic control by carla
 carla_traffic_manager:
   random: true # whether to random select vehicles' color and model
@@ -52,7 +68,7 @@ scenario:
         - [51.17, -12.62, 0.30]     # town06-188
         - [-230.63, -11.64, 0.30]   # town06-313
         - [-336.12, 234.39, 0.30]   # town06-267
-      destination: [-207.22, 240.12, 0.30] # town06-386
+      destination: [-207.22, 240.12, 0.30] # town06-386 
       v2x:
         communication_range: 45
       behavior:

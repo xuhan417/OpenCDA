@@ -1,9 +1,9 @@
-name: opencda
+name: opencda-py38
 channels:
   - defaults
 dependencies:
   - pip==21.1.2
-  - python==3.7.10
+  - python==3.8
   - pip:
     - matplotlib==3.4.2
     - networkx==2.5.1

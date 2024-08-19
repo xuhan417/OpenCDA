@@ -132,6 +132,7 @@ try:
 except ImportError:
     raise RuntimeError('cannot import numpy, make sure numpy package is installed')
 
+from multiprocessing import shared_memory
 
 # ==============================================================================
 # -- Global functions ----------------------------------------------------------
@@ -1304,7 +1305,10 @@ class CameraManager(object):
 # ==============================================================================
 
 
-def pygame_loop(input_queue, output_queue):
+def pygame_loop(input_queue, output_queue, shm_name, array_size):
+    existing_shm = shared_memory.SharedMemory(name=shm_name)
+    shared_array = np.ndarray(array_size, dtype=np.float64, buffer=existing_shm.buf)
+
     pygame.init()
     pygame.font.init()
     world = None
@@ -1348,6 +1352,13 @@ def pygame_loop(input_queue, output_queue):
             # init render clock
             clock.tick_busy_loop(60)
 
+            # read ttc from opencda
+            ego_ttc = shared_array[0]
+            print(' !!!! Current ttc is: ' + str(ego_ttc))
+            sim_time = count*0.05
+            if ego_ttc <= 4.6 and sim_time >= 5:
+                hud.trigger_warning('WARNING: BRAKE', 2)
+
             # tick controller 
             if args.sim_wheel:
                 if sim_controller.parse_events(world, clock):
@@ -1361,13 +1372,13 @@ def pygame_loop(input_queue, output_queue):
             pygame.display.flip()
 
             # update tailgate 
-            sim_time = count*0.05
-            if sim_time == 3:
-                # use 10 for tests
-                is_tailgate = True
-                print('[Pygame Side]: Tailgate signal send, human takeover !!!')
-            if sim_time == 7:
-                hud.trigger_warning('WARNING: BRAKE', 3)
+            # sim_time = count*0.05
+            # if sim_time == 3:
+            #     # use 10 for tests
+            #     is_tailgate = True
+            #     print('[Pygame Side]: Tailgate signal send, human takeover !!!')
+            # if sim_time == 7:
+            #     hud.trigger_warning('WARNING: BRAKE', 3)
 
             # update take over state 
             if args.sim_wheel:

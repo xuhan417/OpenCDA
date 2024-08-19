@@ -19,9 +19,9 @@ import re
 import sys
 import json
 
-
 import carla
 import pygame
+import numpy as np
 from carla import ColorConverter as cc
 from pygame.locals import KMOD_CTRL
 from pygame.locals import K_ESCAPE
@@ -41,7 +41,7 @@ from opencda.scenario_testing.utils.yaml_utils import \
 from opencda.core.common.pygame_render import pygame_loop
 
 # multi-processing
-from multiprocessing import Process, Queue, get_context
+from multiprocessing import Process, Queue, get_context, shared_memory
 import multiprocessing
 # Set multiprocessing start method to 'spawn'
 multiprocessing.set_start_method('spawn', force=True)
@@ -85,18 +85,29 @@ def run_scenario(opt, scenario_params):
         ctx = get_context('spawn')
         input_queue = ctx.Queue(maxsize=1)
         output_queue = ctx.Queue(maxsize=1)
+
+        # Set up shared memory for communication
+        shared_array_size = (2,)  # Example size for throttle, steer, brake, reverse
+        shm = shared_memory.SharedMemory(create=True, size=np.prod(shared_array_size) * np.dtype(np.float64).itemsize)
+        shared_array = np.ndarray(shared_array_size, dtype=np.float64, buffer=shm.buf)
+        shared_array[:] = [0.0, 0.0] 
+
+        # Start Pygame subprocess
         pygame_process = ctx.Process(target=pygame_loop, 
-                                     args=(input_queue,output_queue))
+                                     args=(input_queue, output_queue, shm.name, shared_array_size))
         # put opt to input queue
         input_queue.put(opt)
         human_takeover = False
-        is_tailgate = False
 
         # run steps
         while True:
             scenario_manager.tick()
             # increment simulation tick 
             tick += 1
+
+            # update shared memory 
+            ego_ttc = single_cav_list[0].agent.ttc
+            shared_array[0] = ego_ttc
 
             # pygame rendering 
             if not input_queue.empty() and \
@@ -109,15 +120,13 @@ def run_scenario(opt, scenario_params):
             if not output_queue.empty():
                 human_controls = output_queue.get()
                 human_takeover = human_controls['human_take_over']
-                print('human control signal is: ' + str(human_controls))
-                is_tailgate = human_controls['is_tailgate']
+                # print('human control signal is: ' + str(human_controls))
 
             # tailgate behavior
-            # human_takeover_sec = random.uniform(1, 100) # random float from 1 to 100 with uniform distribution
-            # human_takeover_sec = 10 # hard code for debug purpose
-            # sim_dt = scenario_params['world']['fixed_delta_seconds']
-            # if tick*sim_dt == human_takeover_sec:
-            if is_tailgate:
+            human_takeover_sec = random.uniform(1, 100) # random float from 1 to 100 with uniform distribution
+            human_takeover_sec = 10 # hard code for debug purpose
+            sim_dt = scenario_params['world']['fixed_delta_seconds']
+            if tick*sim_dt == human_takeover_sec:
                 print('[OpenCDA Side]: Reduce collision time, human takeover !!!')
                 # reduce safety distance 
                 single_cav = single_cav_list[0].agent.reduce_following_dist()
@@ -152,6 +161,10 @@ def run_scenario(opt, scenario_params):
         input_queue.put(None)  # Signal the GPU process to terminate
         pygame_process.join()
         eval_manager.evaluate()
+
+        # Clean up shared memory
+        shm.close()
+        shm.unlink()
 
         if opt.record:
             scenario_manager.client.stop_recorder()
