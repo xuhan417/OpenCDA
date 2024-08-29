@@ -49,7 +49,7 @@ vehicle_base:
 # define the background traffic control by carla
 carla_traffic_manager:
   random: true # whether to random select vehicles' color and model
-  global_speed_perc: 0
+  global_speed_perc: -20
   ignore_lights_percentage: 100 # whether set the traffic ignore traffic lights
   ignore_signs_percentage: 100 # whether the cars will ignore stop signs
   vehicle_list: ~  # a number or a list
@@ -68,7 +68,10 @@ scenario:
         - [51.17, -12.62, 0.30]     # town06-188
         - [-230.63, -11.64, 0.30]   # town06-313
         - [-336.12, 234.39, 0.30]   # town06-267
-      destination: [-207.22, 240.12, 0.30] # town06-386 
+        - [-100.49, 239.83, 0.30]
+        - [107.91, 237.56, 0.30]
+        - [535.10, 237.70, 0.30]
+      destination: [599.10, 237.73, 0.30] # town06-386 
       v2x:
         communication_range: 45
       behavior:

@@ -7,42 +7,39 @@ description: |-
 vehicle_base:
   sensing:
     perception:
-      activate: true # when not activated, objects positions will be retrieved from server directly
+      activate: false # when not activated, objects positions will be retrieved from server directly
       camera:
-        visualize: 4 # how many camera images need to be visualized. 0 means no visualization for camera
-        num: 4 # how many cameras are mounted on the vehicle. Maximum 3(frontal, left and right cameras)
+        visualize: 0 # how many camera images need to be visualized. 0 means no visualization for camera
+        num: 0 # how many cameras are mounted on the vehicle. Maximum 3(frontal, left and right cameras)
         # relative positions (x,y,z,yaw) of the camera. len(positions) should be equal to camera num
-        positions:
-          - [2.5, 0, 1.0, 0]
-          - [0.0, 0.3, 1.8, 100]
-          - [0.0, -0.3, 1.8, -100]
-          - [-2.0, 0.0, 1.5, 180]
-
-    localization:
-      activate: true # when not activated, ego position will be retrieved from server directly
-      debug_helper:
-        show_animation: true # whether to show real-time trajectory plotting
-
+        # positions:
+        #   - [2.5, 0, 1.0, 0]
+        #   - [0.0, 0.3, 1.8, 100]
+        #   - [0.0, -0.3, 1.8, -100]
+        #   - [-2.0, 0.0, 1.5, 180]
   behavior:
-    ignore_traffic_light: false # whether to ignore traffic light
+    max_speed: 55 #55 # maximum speed, km/h
+    ignore_traffic_light: true # whether to ignore traffic light
     collision_time_ahead: 2.0 # used for collision checking
+    local_planner:  # trajectory planning related
+      buffer_size: 12 # waypoint buffer size
 
 
 # define the background traffic control by carla
-carla_traffic_manager:
-  random: true # whether to random select vehicles' color and model
-  vehicle_list: ~  # a number or a list
-  # Used only when vehicle_list is a number.
-  # x_min, x_max, y_min, y_max, x_step, y_step
-  range:
-    - [ 50, 250, 135, 145, 50, 4, 30]
+# carla_traffic_manager:
+#   random: true # whether to random select vehicles' color and model
+#   vehicle_list: ~  # a number or a list
+#   # Used only when vehicle_list is a number.
+#   # x_min, x_max, y_min, y_max, x_step, y_step
+#   range:
+#     - [ 50, 250, 135, 145, 50, 4, 30]
 
 # define scenario. In this scenario, only a single CAV will be spawned
 scenario:
   single_cav_list: # this is for merging vehicle or single cav without v2x
     - name: cav1
-      spawn_position: [47.7194, 139.51, 0.3, 0, 0, 0]
-      destination: [600, 145.51, 0.3]
+      spawn_position: [531.65, -13.97, 0.30, 0, -180, 0]
+      destination: [51.17, -12.62, 0.30]
       v2x:
         communication_range: 45
       behavior:

@@ -427,19 +427,8 @@ class BehaviorAgent(object):
         ).id if self.vehicle.get_traffic_light() is not None else -1
 
         # printing traffic light ID
-        if light_id != -1:
-            print('Traffic light detection result: ' + str(light_id))
-            # note: VOICES reset traffic life time to 9999 and use J2735 to overwrite state.
-            #       need to use decoder to get traffic light state. 
-
-            # !!! NOTE !!!: add I/O to use spat data here !!!
-
-            # print('[The Red time for the light is]     --> ' + \
-            #                     str(curr_light.get_red_time()))
-            # print('[The Green time for the light is]   --> ' + \
-            #                     str(curr_light.get_green_time()))
-            # print('[The elspsed time for the light is] --> ' + \
-            #                     str(curr_light.get_elapsed_time()))
+        # if light_id != -1:
+            # print('Traffic light detection result: ' + str(light_id))
 
         # this is the case where the vehicle just pass a stop sign, and won't
         # stop at any stop sign in the next 4 seconds.
@@ -796,8 +785,8 @@ class BehaviorAgent(object):
             It is True if the current ego vehicle's position is close to destination
 
         """
-        flag = abs(self._ego_pos.location.x - self.end_waypoint.transform.location.x) <= 3 and \
-               abs(self._ego_pos.location.y - self.end_waypoint.transform.location.y) <= 3
+        flag = abs(self._ego_pos.location.x - self.end_waypoint.transform.location.x) <= 12 and \
+               abs(self._ego_pos.location.y - self.end_waypoint.transform.location.y) <= 12
         return flag
 
     def check_lane_change_permission(self, lane_change_allowed, collision_detector_enabled, rk):
@@ -932,9 +921,7 @@ class BehaviorAgent(object):
             # VOICES Change: 
             #  |---> do not exit the simulation, but hold the vehicle there.
             return 0, None
-            # todo: potentially add function to revert to the beginning of the 
-            #       route (waypoint) list, so the vehicle will keep driving
-            #       in a loop.
+            
 
          # 1. Traffic light management
         if self.traffic_light_manager(ego_vehicle_wp) != 0:

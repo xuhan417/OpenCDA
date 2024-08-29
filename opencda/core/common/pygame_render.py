@@ -1354,7 +1354,7 @@ def pygame_loop(input_queue, output_queue, shm_name, array_size):
 
             # read ttc from opencda
             ego_ttc = shared_array[0]
-            print(' !!!! Current ttc is: ' + str(ego_ttc))
+            # print(' !!!! Current ttc is: ' + str(ego_ttc))
             sim_time = count*0.05
             if ego_ttc <= 4.6 and sim_time >= 5:
                 hud.trigger_warning('WARNING: BRAKE', 2)
@@ -1370,15 +1370,6 @@ def pygame_loop(input_queue, output_queue, shm_name, array_size):
             world.tick(clock)
             world.render(display)
             pygame.display.flip()
-
-            # update tailgate 
-            # sim_time = count*0.05
-            # if sim_time == 3:
-            #     # use 10 for tests
-            #     is_tailgate = True
-            #     print('[Pygame Side]: Tailgate signal send, human takeover !!!')
-            # if sim_time == 7:
-            #     hud.trigger_warning('WARNING: BRAKE', 3)
 
             # update take over state 
             if args.sim_wheel:

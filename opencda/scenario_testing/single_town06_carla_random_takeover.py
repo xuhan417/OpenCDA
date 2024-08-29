@@ -123,17 +123,17 @@ def run_scenario(opt, scenario_params):
                 # print('human control signal is: ' + str(human_controls))
 
             # tailgate behavior
-            human_takeover_sec = random.uniform(1, 100) # random float from 1 to 100 with uniform distribution
-            human_takeover_sec = 10 # hard code for debug purpose
-            sim_dt = scenario_params['world']['fixed_delta_seconds']
-            if tick*sim_dt == human_takeover_sec:
-                print('[OpenCDA Side]: Reduce collision time, human takeover !!!')
-                # reduce safety distance 
-                single_cav = single_cav_list[0].agent.reduce_following_dist()
-                # check collision checker state 
-                new_collision_time = single_cav_list[0].agent._collision_check.time_ahead
-                print('New collision checker is enabled with: ' + \
-                        str(new_collision_time) + 'second ahead time! ')
+            # human_takeover_sec = random.uniform(1, 100) # random float from 1 to 100 with uniform distribution
+            # human_takeover_sec = 10 # hard code for debug purpose
+            # sim_dt = scenario_params['world']['fixed_delta_seconds']
+            # if tick*sim_dt == human_takeover_sec:
+            #     print('[OpenCDA Side]: Reduce collision time, human takeover !!!')
+            #     # reduce safety distance 
+            #     single_cav = single_cav_list[0].agent.reduce_following_dist()
+            #     # check collision checker state 
+            #     new_collision_time = single_cav_list[0].agent._collision_check.time_ahead
+            #     print('New collision checker is enabled with: ' + \
+            #             str(new_collision_time) + 'second ahead time! ')
 
             transform = single_cav_list[0].vehicle.get_transform()
             spectator.set_transform(carla.Transform(
@@ -154,6 +154,11 @@ def run_scenario(opt, scenario_params):
                 manual_control.brake = human_controls['brake']
                 manual_control.reverse = human_controls['reverse']
                 single_cav.vehicle.apply_control(manual_control)
+            elif single_cav.agent.is_close_to_destination():
+                print('Simulation is Over. ')
+                brake_control = carla.VehicleControl(brake=1.0)
+                single_cav.vehicle.apply_control(brake_control)
+
             else:
                 single_cav.vehicle.apply_control(control)
 

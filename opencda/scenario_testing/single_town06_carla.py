@@ -58,7 +58,14 @@ def run_scenario(opt, scenario_params):
             for i, single_cav in enumerate(single_cav_list):
                 single_cav.update_info()
                 control = single_cav.run_step()
-                single_cav.vehicle.apply_control(control)
+                
+                if single_cav.agent.is_close_to_destination():
+                    print('Simulation is Over. ')
+                    brake_control = carla.VehicleControl(brake=1.0)
+                    single_cav.vehicle.apply_control(brake_control)
+                else:
+                    single_cav.vehicle.apply_control(control)
+
 
     finally:
         eval_manager.evaluate()
