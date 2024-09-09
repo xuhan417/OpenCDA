@@ -97,7 +97,7 @@ def run_scenario(opt, scenario_params):
                                      args=(input_queue, output_queue, shm.name, shared_array_size))
         
         # update the warning setting 
-        opt.display_warning = True
+        opt.display_warning = False
         # put opt to input queue
         input_queue.put(opt)
         human_takeover = False

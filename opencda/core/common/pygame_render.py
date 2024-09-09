@@ -1316,7 +1316,7 @@ def pygame_loop(input_queue, output_queue, shm_name, array_size):
     # get args
     args = input_queue.get()
     count = 0
-    is_tailgate = False
+    # is_tailgate = False
 
     try:
         client = carla.Client(args.host, args.port)
@@ -1356,7 +1356,7 @@ def pygame_loop(input_queue, output_queue, shm_name, array_size):
             ego_ttc = shared_array[0]
             # print(' !!!! Current ttc is: ' + str(ego_ttc))
             sim_time = count*0.05
-            if ego_ttc <= 4.6 and sim_time >= 5:
+            if ego_ttc <= 4.6 and sim_time >= 5 and args.display_warning:
                 hud.trigger_warning('WARNING: BRAKE', 2)
 
             # tick controller 
@@ -1395,7 +1395,7 @@ def pygame_loop(input_queue, output_queue, shm_name, array_size):
                 output_dict['brake'] = controller._control.brake
                 output_dict['hand_brake'] = controller._control.hand_brake
                 output_dict['reverse'] = controller._control.reverse
-            output_dict['is_tailgate'] = is_tailgate
+            # output_dict['is_tailgate'] = is_tailgate
             # send to main loop
             output_queue.put(output_dict)
 

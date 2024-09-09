@@ -120,6 +120,10 @@ def arg_parse():
         '--sync',
         action='store_false',
         help='Activate synchronous mode execution')
+    parser.add_argument(
+        '--display_warning',
+        action='store_false',
+        help='Whether to display warnings for following front vehicle too closely (default: true).')
 
     # parse the arguments and return the result
     opt = parser.parse_args()

@@ -1,0 +1,80 @@
+description: |-
+  Copyright 2021 <UCLA Mobility Lab>
+  Author: Runsheng Xu <rxx3386@ucla.edu>
+  Content: This is the scenario testing configuration file for single vehicle perception/localization/behavior/control
+           testing in high speed in the customized 2lanefree simple version.
+# define carla simulation setting
+world:
+  sync_mode: true
+  client_port: 2000
+  fixed_delta_seconds: 0.05
+  seed: 11 # seed for numpy and random
+
+# First define the basic parameters of the vehicles
+vehicle_base:
+  sensing:
+    perception:
+      camera:
+        visualize: 0
+        num: 0 # how many cameras are mounted on the vehicle. Maximum 3(frontal, left and right cameras)
+        # relative positions (x,y,z,yaw) of the camera. len(positions) should be equal to camera num
+        # positions: 
+        #   - [0.0, 0.3, 1.8, 100]
+        #   - [0.0, -0.3, 1.8, -100]
+      lidar: # lidar sensor configuration, check CARLA sensor reference for more details
+        visualize: false
+  behavior:
+    max_speed: 55 # maximum speed, km/h
+    safety_time: 4 # ttc safety thresholding for decreasing speed
+    ignore_traffic_light: false # whether to ignore traffic light
+    collision_time_ahead: 1.5 # used for collision checking
+    overtake_allowed: false # whether overtake allowed, typically false for platoon leader
+  controller:
+    type: pid_controller # this has to be exactly the same name as the controller py file
+    args:
+      lat:
+        k_p: 0.75
+        k_d: 0.02
+        k_i: 0.4
+      lon:
+        # k_p: 0.37
+        k_p: 0.28
+        k_d: 0.024
+        k_i: 0.032
+      dynamic: false # whether use dynamic pid setting
+      dt: ${world.fixed_delta_seconds} # this should be equal to your simulation time-step
+      max_brake: 0.85
+      max_throttle: 0.85
+      max_steering: 0.3
+# define the background traffic control by carla
+carla_traffic_manager:
+  random: true # whether to random select vehicles' color and model
+  global_speed_perc: -20
+  ignore_lights_percentage: 100 # whether set the traffic ignore traffic lights
+  ignore_signs_percentage: 100 # whether the cars will ignore stop signs
+  vehicle_list: ~  # a number or a list
+  # Used only when vehicle_list is a number.
+  # x_min, x_max, y_min, y_max, x_step, y_step, veh_num
+  range:
+    - [ 450, 520, -100, -10, 15, 3, 18]
+
+# define scenario. In this scenario, a 4-vehicle platoon already exists.
+scenario:
+  single_cav_list: # this is for merging vehicle or single cav without v2x
+    - name: cav1
+      spawn_position: [531.65, -13.97, 0.30, 0, -180, 0] # town06-24
+      middle_point:
+        - [307.36, -13.56, 0.30]    # town06-300
+        - [51.17, -12.62, 0.30]     # town06-188
+        - [-230.63, -11.64, 0.30]   # town06-313
+        - [-336.12, 234.39, 0.30]   # town06-267
+        - [-100.49, 239.83, 0.30]
+        - [107.91, 237.56, 0.30]
+        - [535.10, 237.70, 0.30]
+      destination: [599.10, 237.73, 0.30] # town06-386 
+      v2x:
+        communication_range: 45
+      behavior:
+        local_planner:
+          debug_trajectory: true
+          debug: true
