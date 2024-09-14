@@ -125,14 +125,18 @@ def run_scenario(opt, scenario_params):
                 human_takeover = human_controls['human_take_over']
                 # print('human control signal is: ' + str(human_controls))
 
-            # tailgate behavior
+            # ---------- tailgate behavior -------------
             human_takeover_sec = random.uniform(1, 100) # random float from 1 to 100 with uniform distribution
             human_takeover_sec = 5 # hard code for debug purpose
             sim_dt = scenario_params['world']['fixed_delta_seconds']
+            # factor to reduce the look-ahead dist
+            reducing_factor = 0.35
+
+            # activate tailgate when reaches desired time
             if tick*sim_dt == human_takeover_sec:
                 print('[OpenCDA Side]: Reduce collision time, human takeover !!!')
                 # reduce safety distance 
-                single_cav = single_cav_list[0].agent.reduce_following_dist()
+                single_cav = single_cav_list[0].agent.reduce_following_dist(reducing_factor)
                 # check collision checker state 
                 new_collision_time = single_cav_list[0].agent._collision_check.time_ahead
                 print('New collision checker is enabled with: ' + \

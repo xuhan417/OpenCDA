@@ -766,32 +766,32 @@ class HUD(object):
         self.driving_mode = "Manual" if human_take_over else "OpenCDA"
 
     def render(self, display):
-        if self._show_info:
-            # 1. Warnings for opencda sim
-            # Render the speed in the middle of the screen with larger, bold font in a circle
-            speed_value_surface = self._font_xlarge_bold.render(self.speed_text, True, (255, 255, 255))
-            driving_mode_surface = self._font_large_bold.render(self.driving_mode, True, (255, 255, 255))
+        # 1. Warnings for opencda sim (always on regardless of "F1" key)
+        # Render the speed in the middle of the screen with larger, bold font in a circle
+        speed_value_surface = self._font_xlarge_bold.render(self.speed_text, True, (255, 255, 255))
+        driving_mode_surface = self._font_large_bold.render(self.driving_mode, True, (255, 255, 255))
 
-            # # Define the radius of the circles
-            # circle_radius = 75
-            # # Set the position of the circles
-            # speed_center = ((self.dim[0] - 2 * circle_radius) // 2 + 330, (self.dim[1] - 2 * circle_radius) // 2 + 320)
-            # mode_center = ((self.dim[0] - 2 * circle_radius) // 2 - 75, (self.dim[1] - 2 * circle_radius) // 2 + 320)
+        # # Define the radius of the circles
+        # circle_radius = 75
+        # # Set the position of the circles
+        # speed_center = ((self.dim[0] - 2 * circle_radius) // 2 + 330, (self.dim[1] - 2 * circle_radius) // 2 + 320)
+        # mode_center = ((self.dim[0] - 2 * circle_radius) // 2 - 75, (self.dim[1] - 2 * circle_radius) // 2 + 320)
 
-            # Set the color based on the driving mode
-            mode_color = (0, 255, 0) if self.driving_mode == "OpenCDA" else (255, 0, 0)
+        # Set the color based on the driving mode
+        mode_color = (0, 255, 0) if self.driving_mode == "OpenCDA" else (255, 0, 0)
 
-            # Draw the circles
-            pygame.draw.circle(display, (16, 117, 89), self.speed_center, self.notification_circle_radius)
-            pygame.draw.circle(display, mode_color, self.mode_center, self.notification_circle_radius)
+        # Draw the circles
+        pygame.draw.circle(display, (16, 117, 89), self.speed_center, self.notification_circle_radius)
+        pygame.draw.circle(display, mode_color, self.mode_center, self.notification_circle_radius)
 
-            # Blit the text onto the display
-            display.blit(speed_value_surface, (self.speed_center[0] - speed_value_surface.get_width() // 2 - 120, \
-                                               self.speed_center[1] - speed_value_surface.get_height() // 2 - 12))
-            display.blit(driving_mode_surface, (self.mode_center[0] - driving_mode_surface.get_width() // 2, \
-                                                self.mode_center[1] - driving_mode_surface.get_height() // 2 - 12))
-
-            # 2. Existing renders 
+        # Blit the text onto the display
+        display.blit(speed_value_surface, (self.speed_center[0] - speed_value_surface.get_width() // 2 - 120, \
+                                           self.speed_center[1] - speed_value_surface.get_height() // 2 - 12))
+        display.blit(driving_mode_surface, (self.mode_center[0] - driving_mode_surface.get_width() // 2, \
+                                            self.mode_center[1] - driving_mode_surface.get_height() // 2 - 12))
+        
+        # 2. Eixsting Pygame render that can be toggled by "F1"
+        if self._show_info: 
             info_surface = pygame.Surface((220, self.dim[1]))
             info_surface.set_alpha(100)
             display.blit(info_surface, (0, 0))
@@ -828,14 +828,6 @@ class HUD(object):
         self._notifications.render(display)
         self._warnings.render(display)
         self.help.render(display)
-
-        # # 3. display warnings 
-        # if self._show_warning:
-        #     warning_surface = self._font_large_bold.render(self._warning_text, True, (0, 0, 0))
-        #     warning_rect = warning_surface.get_rect(center=(self.dim[0] // 2, self.dim[1] // 2))
-        #     pygame.draw.rect(display, (255, 255, 0), warning_rect.inflate(20, 20))
-        #     display.blit(warning_surface, warning_rect)
-
 
 # ==============================================================================
 # -- FadingText ----------------------------------------------------------------

@@ -195,7 +195,7 @@ class BehaviorAgent(object):
             self.light_state = str(self.vehicle.get_traffic_light_state())
 
     # new function to reduce following distance, so human can take-over
-    def reduce_following_dist(self):
+    def reduce_following_dist(self, reducing_factor):
         '''
         This is the function to reduce threshold collision time, so the vehicle  
         will follow dangerously close to the leading vehicle. This will make the 
@@ -203,7 +203,7 @@ class BehaviorAgent(object):
         '''
         self.reduce_ttc = True
         # initiate a new collision checker
-        new_collision_time = 0.35*self.collision_time_ahead
+        new_collision_time = reducing_factor*self.collision_time_ahead
         self._collision_check = CollisionChecker(time_ahead=new_collision_time)
         self._collision_check.reduce_lookahead_distance(0.5)
 
