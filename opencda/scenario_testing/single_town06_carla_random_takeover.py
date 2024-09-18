@@ -103,6 +103,22 @@ def run_scenario(opt, scenario_params):
         human_takeover = False
         reduce_speed = False
 
+        # ------------- space key press event -------------
+        print("Press SPACE key to start the vehicle")
+        running = False
+
+        # Set up the Pygame window and clock
+        pygame.init()
+
+        screen = pygame.display.set_mode((700, 100))
+        # Set the font and text for the message
+        font = pygame.font.SysFont("monospace", 30)
+        text = font.render("Press SPACE to start vehicle movement", True, (255, 255, 255))
+
+        # Draw the message on the screen
+        screen.blit(text, (10, 10))
+        pygame.display.flip()
+
         # run steps
         while True:
             scenario_manager.tick()
@@ -125,6 +141,14 @@ def run_scenario(opt, scenario_params):
                 human_controls = output_queue.get()
                 human_takeover = human_controls['human_take_over']
                 # print('human control signal is: ' + str(human_controls))
+
+            # pygame event 
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    sys.exit()
+                elif event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
+                    running = True
 
             # ---------- tailgate behavior -------------
             human_takeover_sec = random.uniform(1, 100) # random float from 1 to 100 with uniform distribution
@@ -155,38 +179,51 @@ def run_scenario(opt, scenario_params):
             single_cav = single_cav_list[0]
             single_cav.update_info()
             control = single_cav.run_step()
-            if human_takeover:
-                manual_control = carla.VehicleControl()
-                manual_control.throttle = human_controls['throttle']
-                manual_control.steer = human_controls['steer']
-                manual_control.brake = human_controls['brake']
-                manual_control.reverse = human_controls['reverse']
-                single_cav.vehicle.apply_control(manual_control)
-            elif single_cav.agent.is_close_to_destination():
-                print('Simulation is Over. ')
+
+            # only proceed is running is true
+            if running:
+                # revert automatic control 
+                for v in bg_veh_list:
+                    v.set_autopilot(True)
+                if human_takeover:
+                    manual_control = carla.VehicleControl()
+                    manual_control.throttle = human_controls['throttle']
+                    manual_control.steer = human_controls['steer']
+                    manual_control.brake = human_controls['brake']
+                    manual_control.reverse = human_controls['reverse']
+                    single_cav.vehicle.apply_control(manual_control)
+                elif single_cav.agent.is_close_to_destination():
+                    print('Simulation is Over. ')
+                    brake_control = carla.VehicleControl(brake=1.0)
+                    single_cav.vehicle.apply_control(brake_control)
+
+                else:
+                    single_cav.vehicle.apply_control(control)
+
+                # logic to maintain background vehicle speed
+                # this is specific to town06, used to reduce 90km/h to 50km/h
+                leading_v = bg_veh_list[0]
+                trailing_v = bg_veh_list[-1]
+                speed_limit = max(leading_v.get_speed_limit(), \
+                                  trailing_v.get_speed_limit()) 
+                if speed_limit >= 75 and not reduce_speed:
+                    print('set reduce speed to true.')
+                    reduce_speed = True
+                if reduce_speed:
+                    print('reduce speed limit to all TM to 35%')
+                    # traffic_manager.global_percentage_speed_difference(90)
+                    for v in bg_veh_list:
+                        traffic_manager.vehicle_percentage_speed_difference(v, 40)
+                    tm_spd = leading_v.get_velocity()
+                    tm_kmh = math.sqrt((tm_spd.x**2 + tm_spd.y**2 + tm_spd.z**2))*3.6
+                    print('The current tm speed is: ' + str(tm_kmh))
+            # hold all vehicle if not running yet 
+            else:
                 brake_control = carla.VehicleControl(brake=1.0)
                 single_cav.vehicle.apply_control(brake_control)
-
-            else:
-                single_cav.vehicle.apply_control(control)
-
-            # logic to maintain background vehicle speed
-            # this is specific to town06, used to reduce 90km/h to 50km/h
-            leading_v = bg_veh_list[0]
-            trailing_v = bg_veh_list[-1]
-            speed_limit = max(leading_v.get_speed_limit(), \
-                              trailing_v.get_speed_limit()) 
-            if speed_limit >= 75 and not reduce_speed:
-                print('set reduce speed to true.')
-                reduce_speed = True
-            if reduce_speed:
-                print('reduce speed limit to all TM to 35%')
-                # traffic_manager.global_percentage_speed_difference(90)
                 for v in bg_veh_list:
-                    traffic_manager.vehicle_percentage_speed_difference(v, 40)
-                tm_spd = leading_v.get_velocity()
-                tm_kmh = math.sqrt((tm_spd.x**2 + tm_spd.y**2 + tm_spd.z**2))*3.6
-                print('The current tm speed is: ' + str(tm_kmh))
+                    v.set_autopilot(enabled=False)
+                    v.apply_control(brake_control)
 
     finally:
         input_queue.put(None)  # Signal the GPU process to terminate
