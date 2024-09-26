@@ -284,4 +284,11 @@ class LocDebugHelper(object):
                           y_error_mean,
                           yaw_error_mean)
 
-        return figure, perform_txt
+        #extract data arrays CCJ
+        gt_x_array = np.array(self.gt_x)
+        gt_y_array = np.array(self.gt_y)
+        gt_yaw_array = np.array(self.gt_yaw)
+        gt_spd_array = np.array(self.gt_spd)
+        value_arrays = np.column_stack((gt_x_array, gt_y_array, gt_yaw_array, gt_spd_array))
+        
+        return figure, perform_txt, value_arrays

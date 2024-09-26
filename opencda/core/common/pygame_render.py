@@ -595,7 +595,8 @@ class SimControl(object):
         elif throttleCmd > 1:
             throttleCmd = 1
 
-        brakeCmd = 1.6 + (2.05 * math.log10(
+        K3 = 1.6 #1.6
+        brakeCmd = K3 + (2.05 * math.log10(
             -0.7 * jsInputs[self._brake_idx] + 1.4) - 1.2) / 0.92
         if brakeCmd <= 0:
             brakeCmd = 0
@@ -645,14 +646,14 @@ class HUD(object):
         # warning 
         # Set the position of the circles
         self.notification_circle_radius = 75
-        self.speed_center = ((self.dim[0] - 2 * self.notification_circle_radius) // 2 + 330, \
+        self.speed_center = ((self.dim[0] - 2 * self.notification_circle_radius) // 2 + 225, \
                              (self.dim[1] - 2 * self.notification_circle_radius) // 2 + 320)
-        self.mode_center = ((self.dim[0] - 2 * self.notification_circle_radius) // 2 - 75, \
+        self.mode_center = ((self.dim[0] - 2 * self.notification_circle_radius) // 2 - 450, \
                             (self.dim[1] - 2 * self.notification_circle_radius) // 2 + 320)
-        warning_width = abs(self.mode_center[0] - self.speed_center[0])
-        self._warnings = WarningText(font, (warning_width, 40), \
-                                           (self.mode_center[0], \
-                                            self.mode_center[1]-self.notification_circle_radius-50))
+        warning_width = abs(self.mode_center[0] - self.speed_center[0]) - 175
+        self._warnings = WarningText(self._font_large_bold, (warning_width, self.notification_circle_radius), \
+                                           (self.mode_center[0] + 1.2 * self.notification_circle_radius, \
+                                            self.mode_center[1]- 0.6 * self.notification_circle_radius))
 
         self.help = HelpText(pygame.font.Font(mono, 16), width, height)
         self.server_fps = 0
@@ -694,7 +695,8 @@ class HUD(object):
         max_col = max(1.0, max(collision))
         collision = [x / max_col for x in collision]
         vehicles = world.world.get_actors().filter('vehicle.*')
-        self.speed_text = '% 15.0f km/h' % (3.6 * math.sqrt(v.x**2 + v.y**2 + v.z**2))
+        #self.speed_text = '% 15.0f km/h' % (3.6 * math.sqrt(v.x**2 + v.y**2 + v.z**2))
+        self.speed_text = '% 15.0f mph' % (0.621 * 3.6 * math.sqrt(v.x**2 + v.y**2 + v.z**2))
 
         self._info_text = [
             'Server:  % 16.0f FPS' % self.server_fps,
@@ -778,7 +780,7 @@ class HUD(object):
         # mode_center = ((self.dim[0] - 2 * circle_radius) // 2 - 75, (self.dim[1] - 2 * circle_radius) // 2 + 320)
 
         # Set the color based on the driving mode
-        mode_color = (0, 255, 0) if self.driving_mode == "OpenCDA" else (255, 0, 0)
+        mode_color = (33, 173, 155) if self.driving_mode == "OpenCDA" else (135, 133, 130)
 
         # Draw the circles
         pygame.draw.circle(display, (16, 117, 89), self.speed_center, self.notification_circle_radius)
@@ -871,11 +873,11 @@ class WarningText(object):
         self.seconds_left = 0
         self.surface = pygame.Surface(self.dim)
 
-    def set_text(self, text, color=(207, 0, 15), seconds=5.0):
+    def set_text(self, text, color=(255, 255, 255), seconds=5.0):
         text_texture = self.font.render(text, True, color)
         self.surface = pygame.Surface(self.dim)
         self.seconds_left = seconds
-        self.surface.fill((252, 214, 112, 0))
+        self.surface.fill((224, 53, 40, 0))
         self.surface.blit(text_texture, (10, 11))
 
     def tick(self, _, clock):
@@ -1150,13 +1152,13 @@ class CameraManager(object):
         bound_x = self._parent.bounding_box.extent.x
         bound_y = self._parent.bounding_box.extent.y
         bound_z = self._parent.bounding_box.extent.z
-        # interior viewing angle 
+        # interior viewing angle (x=0.15 * bound_x, y=-0.25, z=1.71 * bound_z)
         self._camera_transforms = [
             # dev note: larger x --> closer to the front; larger z --> higher
             # carla.Transform(carla.Location(x=0.075 * bound_x, y=-0.25, z=1.67 * bound_z), carla.Rotation(pitch=0.0))
-            carla.Transform(carla.Location(x=0.15 * bound_x, y=-0.25, z=1.71 * bound_z), carla.Rotation(pitch=-2.5, yaw=0.06)), # left
-            carla.Transform(carla.Location(x=0.15 * bound_x, y=-0.25, z=1.71 * bound_z), carla.Rotation(pitch=-2.5, yaw=0.06)), # center 
-            carla.Transform(carla.Location(x=0.15 * bound_x, y=-0.25, z=1.71 * bound_z), carla.Rotation(pitch=-2.5, yaw=0.06))  # right
+            carla.Transform(carla.Location(x=-0.12 * bound_x, y=-0.25, z=1.67 * bound_z), carla.Rotation(pitch=-2.5, yaw=0.06)), # left
+            carla.Transform(carla.Location(x=-0.12 * bound_x, y=-0.25, z=1.67 * bound_z), carla.Rotation(pitch=-2.5, yaw=0.06)), # center 
+            carla.Transform(carla.Location(x=-0.12 * bound_x, y=-0.25, z=1.67 * bound_z), carla.Rotation(pitch=-2.5, yaw=0.06))  # right
         ]
 
         self.sensor_type = ['sensor.camera.rgb', cc.Raw, 'Camera RGB', {}]
@@ -1301,7 +1303,12 @@ def pygame_loop(input_queue, output_queue, shm_name, array_size):
     existing_shm = shared_memory.SharedMemory(name=shm_name)
     shared_array = np.ndarray(array_size, dtype=np.float64, buffer=existing_shm.buf)
 
+    # change display location 
+    x = 0
+    y = 0
+    os.environ['SDL_VIDEO_WINDOW_POS'] = "%d,%d" % (x,y)
     pygame.init()
+
     pygame.font.init()
     world = None
     original_settings = None
@@ -1348,8 +1355,10 @@ def pygame_loop(input_queue, output_queue, shm_name, array_size):
             ego_ttc = shared_array[0]
             # print(' !!!! Current ttc is: ' + str(ego_ttc))
             sim_time = count*0.05
-            if ego_ttc <= 4.6 and sim_time >= 5 and args.display_warning:
-                hud.trigger_warning('WARNING: BRAKE', 2)
+            ttc_thr = 2.2 #4.6
+            sim_time_thr = 5
+            if ego_ttc <= ttc_thr and sim_time >= sim_time_thr and args.display_warning:
+                hud.trigger_warning(' WARNING: TAKEOVER VEHICLE', 2)
 
             # tick controller 
             if args.sim_wheel:

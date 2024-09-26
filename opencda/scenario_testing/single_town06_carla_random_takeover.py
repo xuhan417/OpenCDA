@@ -50,6 +50,7 @@ def run_scenario(opt, scenario_params):
     try:
         # init simulation tick count 
         tick = 0
+        running_tick = 0
         scenario_params = add_current_time(scenario_params)
 
         # create CAV world
@@ -108,15 +109,18 @@ def run_scenario(opt, scenario_params):
         running = False
 
         # Set up the Pygame window and clock
+        x = 1280
+        y = 1200
+        os.environ['SDL_VIDEO_WINDOW_POS'] = "%d,%d" % (x,y)
         pygame.init()
 
-        screen = pygame.display.set_mode((700, 100))
+        pause_screen = pygame.display.set_mode((700, 100))
         # Set the font and text for the message
         font = pygame.font.SysFont("monospace", 30)
         text = font.render("Press SPACE to start vehicle movement", True, (255, 255, 255))
 
-        # Draw the message on the screen
-        screen.blit(text, (10, 10))
+        # Draw the message on the pause_screen
+        pause_screen.blit(text, (10, 10))
         pygame.display.flip()
 
         # run steps
@@ -151,11 +155,11 @@ def run_scenario(opt, scenario_params):
                     running = True
 
             # ---------- tailgate behavior -------------
-            human_takeover_sec = random.uniform(1, 100) # random float from 1 to 100 with uniform distribution
-            human_takeover_sec = 5 # hard code for debug purpose
+            #human_takeover_sec = random.uniform(20, 50) # random float from 1 to 100 with uniform distribution
+            human_takeover_sec = 300 # hard code for debug purpose
             sim_dt = scenario_params['world']['fixed_delta_seconds']
             # factor to reduce the look-ahead dist
-            reducing_factor = 0.35
+            reducing_factor = 0.3 #0.35
 
             # activate tailgate when reaches desired time
             if tick*sim_dt == human_takeover_sec:
@@ -182,6 +186,8 @@ def run_scenario(opt, scenario_params):
 
             # only proceed is running is true
             if running:
+                # increment running tick 
+                running_tick += 1
                 # revert automatic control 
                 for v in bg_veh_list:
                     v.set_autopilot(True)
@@ -207,7 +213,7 @@ def run_scenario(opt, scenario_params):
                 speed_limit = max(leading_v.get_speed_limit(), \
                                   trailing_v.get_speed_limit()) 
                 if speed_limit >= 75 and not reduce_speed:
-                    print('set reduce speed to true.')
+                    #print('set reduce speed to true.')
                     reduce_speed = True
                 if reduce_speed:
                     print('reduce speed limit to all TM to 35%')

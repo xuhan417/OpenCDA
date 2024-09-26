@@ -9,7 +9,7 @@ Evaluation manager.
 import os
 from datetime import datetime
 from opencda.scenario_testing.evaluations.utils import lprint
-
+import numpy as np #CCJ
 
 class EvaluationManager(object):
     """
@@ -75,7 +75,7 @@ class EvaluationManager(object):
             lprint(log_file, 'Actor ID: %d' % actor_id)
 
             loc_debug_helper = vm.agent.debug_helper
-            figure, perform_txt = loc_debug_helper.evaluate()
+            figure, perform_txt, value_arrays = loc_debug_helper.evaluate() #CCJ
 
             # save plotting
             figure_save_path = os.path.join(
@@ -85,6 +85,13 @@ class EvaluationManager(object):
             figure.savefig(figure_save_path, dpi=100)
 
             lprint(log_file, perform_txt)
+
+            #extract kinematics csv CCJ
+            array_path = os.path.join(
+                self.eval_save_path,
+                '%d_kinematics_array.csv' %
+                actor_id)        
+            np.savetxt(array_path, value_arrays, delimiter=',')
 
     def localization_eval(self, log_file):
         """
@@ -99,7 +106,7 @@ class EvaluationManager(object):
             lprint(log_file, 'Actor ID: %d' % actor_id)
 
             loc_debug_helper = vm.localizer.debug_helper
-            figure, perform_txt = loc_debug_helper.evaluate()
+            figure, perform_txt, value_arrays = loc_debug_helper.evaluate() #CCJ
 
             # save plotting
             figure_save_path = os.path.join(
@@ -111,6 +118,13 @@ class EvaluationManager(object):
             # save log txt
             lprint(log_file, perform_txt)
 
+            #extract localization csv CCJ
+            array_path = os.path.join(
+                self.eval_save_path,
+                '%d_localization_array.csv' %
+                actor_id)        
+            np.savetxt(array_path, value_arrays, delimiter=',')
+            
     def platooning_eval(self, log_file):
         """
         Platooning evaluation.

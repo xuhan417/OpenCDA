@@ -86,14 +86,16 @@ class PlanDebugHelper(object):
         figure.suptitle('planning profile of actor id %d' % self.actor_id)
 
         # calculate the statistics
-        spd_avg = np.mean(np.array(self.speed_list[0]))
-        spd_std = np.std(np.array(self.speed_list[0]))
+        spd_array = np.array(self.speed_list[0]) #CCJ
+        spd_avg = np.mean(spd_array)
+        spd_std = np.std(spd_array)
 
-        acc_avg = np.mean(np.array(self.acc_list[0]))
-        acc_std = np.std(np.array(self.acc_list[0]))
+        acc_array = np.array(self.acc_list[0]) #CCJ
+        acc_avg = np.mean(acc_array)
+        acc_std = np.std(acc_array)
 
-        ttc_array = np.array(self.ttc_list[0])
-        ttc_array = ttc_array[ttc_array < 1000]
+        ttc_array_full = np.array(self.ttc_list[0]) #CCJ
+        ttc_array = ttc_array_full[ttc_array_full < 1000]
         ttc_avg = np.mean(ttc_array)
         ttc_std = np.std(ttc_array)
 
@@ -106,4 +108,8 @@ class PlanDebugHelper(object):
         perform_txt += 'TTC average: %f (m/s), ' \
                        'TTC std: %f (m/s) \n' % (ttc_avg, ttc_std)
 
-        return figure, perform_txt
+        # export data arrays CCJ
+        value_arrays = np.column_stack((spd_array, acc_array, ttc_array_full))
+        
+
+        return figure, perform_txt, value_arrays
