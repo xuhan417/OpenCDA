@@ -1355,8 +1355,8 @@ def pygame_loop(input_queue, output_queue, shm_name, array_size):
             ego_ttc = shared_array[0]
             # print(' !!!! Current ttc is: ' + str(ego_ttc))
             sim_time = count*0.05
-            ttc_thr = 2.2 #4.6
-            sim_time_thr = 5
+            ttc_thr = 3 #2.2, 4.6
+            sim_time_thr = 190
             if ego_ttc <= ttc_thr and sim_time >= sim_time_thr and args.display_warning:
                 hud.trigger_warning(' WARNING: TAKEOVER VEHICLE', 2)
 

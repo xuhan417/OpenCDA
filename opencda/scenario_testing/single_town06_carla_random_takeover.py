@@ -109,7 +109,7 @@ def run_scenario(opt, scenario_params):
         running = False
 
         # Set up the Pygame window and clock
-        x = 1280
+        x = 1200
         y = 1200
         os.environ['SDL_VIDEO_WINDOW_POS'] = "%d,%d" % (x,y)
         pygame.init()
@@ -123,6 +123,10 @@ def run_scenario(opt, scenario_params):
         pause_screen.blit(text, (10, 10))
         pygame.display.flip()
 
+        #set the tailgate onset time outside loop (scenario is 250s long)
+        #human_takeover_sec = 20 # hard code for debug purpose
+        human_takeover_sec = int(random.uniform(200, 230)) # random float from 1 to 100 with uniform distribution
+        print(human_takeover_sec)
         # run steps
         while True:
             scenario_manager.tick()
@@ -155,11 +159,9 @@ def run_scenario(opt, scenario_params):
                     running = True
 
             # ---------- tailgate behavior -------------
-            #human_takeover_sec = random.uniform(20, 50) # random float from 1 to 100 with uniform distribution
-            human_takeover_sec = 300 # hard code for debug purpose
             sim_dt = scenario_params['world']['fixed_delta_seconds']
             # factor to reduce the look-ahead dist
-            reducing_factor = 0.3 #0.35
+            reducing_factor = 0.25 #0.35
 
             # activate tailgate when reaches desired time
             if tick*sim_dt == human_takeover_sec:
@@ -216,13 +218,13 @@ def run_scenario(opt, scenario_params):
                     #print('set reduce speed to true.')
                     reduce_speed = True
                 if reduce_speed:
-                    print('reduce speed limit to all TM to 35%')
+                    #print('reduce speed limit to all TM to 35%')
                     # traffic_manager.global_percentage_speed_difference(90)
                     for v in bg_veh_list:
-                        traffic_manager.vehicle_percentage_speed_difference(v, 40)
+                        traffic_manager.vehicle_percentage_speed_difference(v, 30)
                     tm_spd = leading_v.get_velocity()
                     tm_kmh = math.sqrt((tm_spd.x**2 + tm_spd.y**2 + tm_spd.z**2))*3.6
-                    print('The current tm speed is: ' + str(tm_kmh))
+                    #print('The current tm speed is: ' + str(tm_kmh))
             # hold all vehicle if not running yet 
             else:
                 brake_control = carla.VehicleControl(brake=1.0)
