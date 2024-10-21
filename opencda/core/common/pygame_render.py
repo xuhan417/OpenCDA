@@ -935,6 +935,8 @@ class CollisionSensor(object):
         # reference.
         weak_self = weakref.ref(self)
         self.sensor.listen(lambda event: CollisionSensor._on_collision(weak_self, event))
+        # add another collision 
+        self.is_collided = False
 
     def get_collision_history(self):
         history = collections.defaultdict(int)
@@ -944,11 +946,19 @@ class CollisionSensor(object):
 
     @staticmethod
     def _on_collision(weak_self, event):
+        '''
+        Modify collision behavior to stop the car and notify to exit.
+        '''
         self = weak_self()
         if not self:
             return
         actor_type = get_actor_display_name(event.other_actor)
-        self.hud.notification('Collision with %r' % actor_type)
+        # send notification
+        # self.hud.notification('Collision with %r' % actor_type)
+        collision_warning_text = 'Collision with %r. Scenario stops, please exit simulation.' % actor_type
+        self.hud.notification(collision_warning_text, 9999)
+        self.is_collided = True
+
         impulse = event.normal_impulse
         intensity = math.sqrt(impulse.x**2 + impulse.y**2 + impulse.z**2)
         self.history.append((event.frame, intensity))
@@ -1351,6 +1361,10 @@ def pygame_loop(input_queue, output_queue, shm_name, array_size):
             if ego_ttc <= 4.6 and sim_time >= 5 and args.display_warning:
                 hud.trigger_warning('WARNING: BRAKE', 2)
 
+            # add warning for collision 
+            if self.collision_sensor.is_collided:
+                hud.trigger_warning('WARNING: COLLISION OCCURRED', 9999)
+
             # tick controller 
             if args.sim_wheel:
                 if sim_controller.parse_events(world, clock):
@@ -1379,6 +1393,8 @@ def pygame_loop(input_queue, output_queue, shm_name, array_size):
                 output_dict['brake'] = sim_controller._control.brake
                 output_dict['hand_brake'] = sim_controller._control.hand_brake
                 output_dict['reverse'] = sim_controller._control.reverse
+                # add is collided
+                output_dict['is_collided'] = world.collision_sensor.is_collided
             else: 
                 # keyboard control
                 output_dict['human_take_over'] = controller.human_take_over
@@ -1387,6 +1403,9 @@ def pygame_loop(input_queue, output_queue, shm_name, array_size):
                 output_dict['brake'] = controller._control.brake
                 output_dict['hand_brake'] = controller._control.hand_brake
                 output_dict['reverse'] = controller._control.reverse
+                # add is collided
+                output_dict['is_collided'] = world.collision_sensor.is_collided
+                
             # output_dict['is_tailgate'] = is_tailgate
             # send to main loop
             output_queue.put(output_dict)

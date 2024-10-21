@@ -138,9 +138,9 @@ def run_scenario(opt, scenario_params):
 
             # catch output queue
             if not output_queue.empty():
-                human_controls = output_queue.get()
-                human_takeover = human_controls['human_take_over']
-                # print('human control signal is: ' + str(human_controls))
+                output_dict = output_queue.get()
+                human_takeover = output_dict['human_take_over']
+                # print('output dict signal is: ' + str(output_dict))
 
             # pygame event 
             for event in pygame.event.get():
@@ -187,10 +187,10 @@ def run_scenario(opt, scenario_params):
                     v.set_autopilot(True)
                 if human_takeover:
                     manual_control = carla.VehicleControl()
-                    manual_control.throttle = human_controls['throttle']
-                    manual_control.steer = human_controls['steer']
-                    manual_control.brake = human_controls['brake']
-                    manual_control.reverse = human_controls['reverse']
+                    manual_control.throttle = output_dict['throttle']
+                    manual_control.steer = output_dict['steer']
+                    manual_control.brake = output_dict['brake']
+                    manual_control.reverse = output_dict['reverse']
                     single_cav.vehicle.apply_control(manual_control)
                 elif single_cav.agent.is_close_to_destination():
                     print('Simulation is Over. ')
@@ -217,6 +217,15 @@ def run_scenario(opt, scenario_params):
                     tm_spd = leading_v.get_velocity()
                     tm_kmh = math.sqrt((tm_spd.x**2 + tm_spd.y**2 + tm_spd.z**2))*3.6
                     print('The current tm speed is: ' + str(tm_kmh))
+            # hault simulation if collided
+            elif output_dict['is_collided']:
+                # stop all vehicles 
+                brake_control = carla.VehicleControl(brake=1.0)
+                single_cav.vehicle.apply_control(brake_control)
+                for v in bg_veh_list:
+                    v.set_autopilot(enabled=False)
+                    v.apply_control(brake_control)
+
             # hold all vehicle if not running yet 
             else:
                 brake_control = carla.VehicleControl(brake=1.0)
