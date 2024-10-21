@@ -955,7 +955,7 @@ class CollisionSensor(object):
         actor_type = get_actor_display_name(event.other_actor)
         # send notification
         # self.hud.notification('Collision with %r' % actor_type)
-        collision_warning_text = 'Collision with %r. Scenario stops, please exit simulation.' % actor_type
+        collision_warning_text = 'Collision with %r. Current scenario stops. Please exit simulation.' % actor_type
         self.hud.notification(collision_warning_text, 9999)
         self.is_collided = True
 
@@ -1331,6 +1331,7 @@ def pygame_loop(input_queue, output_queue, shm_name, array_size):
                 pygame.HWSURFACE | pygame.DOUBLEBUF)
             display.fill((0,0,0))
             pygame.display.flip()
+
         elif args.num_screens == 3:
             display = pygame.display.set_mode(
                 (args.width*3, args.height),
@@ -1362,8 +1363,8 @@ def pygame_loop(input_queue, output_queue, shm_name, array_size):
                 hud.trigger_warning('WARNING: BRAKE', 2)
 
             # add warning for collision 
-            if self.collision_sensor.is_collided:
-                hud.trigger_warning('WARNING: COLLISION OCCURRED', 9999)
+            if world.collision_sensor.is_collided:
+                hud.trigger_warning('WARNING: COLLISION OCCURRED !', 9999)
 
             # tick controller 
             if args.sim_wheel:

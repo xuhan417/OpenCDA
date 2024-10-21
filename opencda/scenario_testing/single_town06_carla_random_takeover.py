@@ -182,49 +182,57 @@ def run_scenario(opt, scenario_params):
 
             # only proceed is running is true
             if running:
-                # revert automatic control 
-                for v in bg_veh_list:
-                    v.set_autopilot(True)
-                if human_takeover:
-                    manual_control = carla.VehicleControl()
-                    manual_control.throttle = output_dict['throttle']
-                    manual_control.steer = output_dict['steer']
-                    manual_control.brake = output_dict['brake']
-                    manual_control.reverse = output_dict['reverse']
-                    single_cav.vehicle.apply_control(manual_control)
-                elif single_cav.agent.is_close_to_destination():
-                    print('Simulation is Over. ')
+                # hault the sim if collides 
+                if output_dict['is_collided']:
+                    # stop all vehicles 
                     brake_control = carla.VehicleControl(brake=1.0)
                     single_cav.vehicle.apply_control(brake_control)
-
-                else:
-                    single_cav.vehicle.apply_control(control)
-
-                # logic to maintain background vehicle speed
-                # this is specific to town06, used to reduce 90km/h to 50km/h
-                leading_v = bg_veh_list[0]
-                trailing_v = bg_veh_list[-1]
-                speed_limit = max(leading_v.get_speed_limit(), \
-                                  trailing_v.get_speed_limit()) 
-                if speed_limit >= 75 and not reduce_speed:
-                    print('set reduce speed to true.')
-                    reduce_speed = True
-                if reduce_speed:
-                    print('reduce speed limit to all TM to 35%')
-                    # traffic_manager.global_percentage_speed_difference(90)
                     for v in bg_veh_list:
-                        traffic_manager.vehicle_percentage_speed_difference(v, 40)
-                    tm_spd = leading_v.get_velocity()
-                    tm_kmh = math.sqrt((tm_spd.x**2 + tm_spd.y**2 + tm_spd.z**2))*3.6
-                    print('The current tm speed is: ' + str(tm_kmh))
-            # hault simulation if collided
-            elif output_dict['is_collided']:
-                # stop all vehicles 
-                brake_control = carla.VehicleControl(brake=1.0)
-                single_cav.vehicle.apply_control(brake_control)
-                for v in bg_veh_list:
-                    v.set_autopilot(enabled=False)
-                    v.apply_control(brake_control)
+                        v.set_autopilot(enabled=False)
+                        v.apply_control(brake_control)
+
+                # only continue if no collision happens
+                else:
+                    # revert automatic control 
+                    for v in bg_veh_list:
+                        v.set_autopilot(True)
+                    if human_takeover:
+                        manual_control = carla.VehicleControl()
+                        manual_control.throttle = output_dict['throttle']
+                        manual_control.steer = output_dict['steer']
+                        manual_control.brake = output_dict['brake']
+                        manual_control.reverse = output_dict['reverse']
+                        single_cav.vehicle.apply_control(manual_control)
+                    elif single_cav.agent.is_close_to_destination():
+                        print('Simulation is Over. ')
+                        brake_control = carla.VehicleControl(brake=1.0)
+                        single_cav.vehicle.apply_control(brake_control)
+
+                    else:
+                        # single_cav.vehicle.apply_control(control)
+                        # add a throttle to test collision 
+                        
+                        # NOTE: only for testing !!!
+                        acc_control = carla.VehicleControl(throttle=1.0)
+                        single_cav.vehicle.apply_control(acc_control)
+
+                    # logic to maintain background vehicle speed
+                    # this is specific to town06, used to reduce 90km/h to 50km/h
+                    leading_v = bg_veh_list[0]
+                    trailing_v = bg_veh_list[-1]
+                    speed_limit = max(leading_v.get_speed_limit(), \
+                                      trailing_v.get_speed_limit()) 
+                    if speed_limit >= 75 and not reduce_speed:
+                        print('set reduce speed to true.')
+                        reduce_speed = True
+                    if reduce_speed:
+                        print('reduce speed limit to all TM to 35%')
+                        # traffic_manager.global_percentage_speed_difference(90)
+                        for v in bg_veh_list:
+                            traffic_manager.vehicle_percentage_speed_difference(v, 40)
+                        tm_spd = leading_v.get_velocity()
+                        tm_kmh = math.sqrt((tm_spd.x**2 + tm_spd.y**2 + tm_spd.z**2))*3.6
+                        print('The current tm speed is: ' + str(tm_kmh))
 
             # hold all vehicle if not running yet 
             else:

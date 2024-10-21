@@ -90,7 +90,7 @@ def arg_parse():
         help='enable autopilot')
     parser.add_argument(
         '--res',
-        metavar='WIDTHxHEIGHT',
+        metavar='WidthxHeight',
         default='4800x1080',
         help='window resolution (default: 3840x720)')
 
