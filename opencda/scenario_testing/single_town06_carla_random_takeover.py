@@ -211,16 +211,15 @@ def run_scenario(opt, scenario_params):
                         single_cav.vehicle.apply_control(manual_control)
                     elif single_cav.agent.is_close_to_destination():
                         print('Simulation is Over. ')
-                        brake_control = carla.VehicleControl(brake=1.0)
+                        brake_control = carla.VehicleControl(brake=1.0,)
                         single_cav.vehicle.apply_control(brake_control)
 
                     else:
-                        # single_cav.vehicle.apply_control(control)
-                        # add a throttle to test collision 
-                        
-                        # NOTE: only for testing !!!
-                        acc_control = carla.VehicleControl(throttle=1.0)
-                        single_cav.vehicle.apply_control(acc_control)
+                        single_cav.vehicle.apply_control(control) 
+                    
+                        # NOTE: add a throttle to test collision, only for testing !!!
+                        # acc_control = carla.VehicleControl(throttle=1.0)
+                        # single_cav.vehicle.apply_control(acc_control)
 
                     # logic to maintain background vehicle speed
                     # this is specific to town06, used to reduce 90km/h to 50km/h

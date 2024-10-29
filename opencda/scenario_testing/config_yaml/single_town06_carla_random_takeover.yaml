@@ -26,7 +26,7 @@ vehicle_base:
   behavior:
     max_speed: 65 # maximum speed, km/h
     safety_time: 5 # ttc safety thresholding for decreasing speed
-    ignore_traffic_light: false # whether to ignore traffic light
+    ignore_traffic_light: true # whether to ignore traffic light
     collision_time_ahead: 1.5 # used for collision checking
     overtake_allowed: false # whether overtake allowed, typically false for platoon leader
   controller:
@@ -49,8 +49,8 @@ vehicle_base:
 # define the background traffic control by carla
 carla_traffic_manager:
   random: true # whether to random select vehicles' color and model
-  global_speed_perc: -20
-  ignore_lights_percentage: 10 # whether set the traffic ignore traffic lights
+  global_speed_perc:  -100 # -20
+  ignore_lights_percentage: 100 # whether set the traffic ignore traffic lights
   ignore_signs_percentage: 10 # whether the cars will ignore stop signs
   #random_left_lanechange_percentage: 20 # Adjust probability that in each timestep the actor will perform a left lane change, dependent on lane change availability.
   #random_right_lanechange_percentage: 20 # Adjust probability that in each timestep the actor will perform a right lane change, dependent on lane change availability.
@@ -59,6 +59,7 @@ carla_traffic_manager:
   # x_min, x_max, y_min, y_max, x_step, y_step, veh_num
   range:
     - [ 450, 520, -100, -10, 15, 3, 30]
+      # - [ 450, 520, -100, -10, 15, 3, 2]
 
 # define scenario. In this scenario, a 4-vehicle platoon already exists.
 scenario:

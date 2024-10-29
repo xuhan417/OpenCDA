@@ -1308,6 +1308,20 @@ class CameraManager(object):
 # -- pygame_loop ---------------------------------------------------------------
 # ==============================================================================
 
+# helper function 
+def is_close_to_destination(ego_pos, end_waypoint_pos_x, end_waypoint_pos_y):
+        """
+        Check if the current ego vehicle's position is close to destination
+
+        Returns
+        -------
+        flag : boolean
+            It is True if the current ego vehicle's position is close to destination
+
+        """
+        flag = abs(ego_pos.x - end_waypoint_pos_x) <= 12 and \
+               abs(ego_pos.y - end_waypoint_pos_y) <= 12
+        return flag
 
 def pygame_loop(input_queue, output_queue, shm_name, array_size):
     existing_shm = shared_memory.SharedMemory(name=shm_name)
@@ -1375,6 +1389,15 @@ def pygame_loop(input_queue, output_queue, shm_name, array_size):
             if world.collision_sensor.is_collided:
                 hud.trigger_warning('WARNING: COLLISION OCCURRED !', 9999)
 
+            # use location to determin near target
+            ego_location = world.player.get_location()
+            destination_x = 599.10
+            destination_y = 237.73
+            is_near_end = is_close_to_destination(ego_location, destination_x, destination_y)
+            if is_near_end: 
+                print('Simulation end from pygame!!')
+                hud.trigger_warning('SIMULATION END', 5)
+            
             # tick controller 
             if args.sim_wheel:
                 if sim_controller.parse_events(world, clock):
