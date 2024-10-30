@@ -97,8 +97,6 @@ def run_scenario(opt, scenario_params):
         pygame_process = ctx.Process(target=pygame_loop, 
                                      args=(input_queue, output_queue, shm.name, shared_array_size))
         
-        # update the warning setting 
-        opt.display_warning = True
         # put opt to input queue
         input_queue.put(opt)
         human_takeover = False
@@ -215,11 +213,11 @@ def run_scenario(opt, scenario_params):
                         single_cav.vehicle.apply_control(brake_control)
 
                     else:
-                        single_cav.vehicle.apply_control(control) 
+                        # single_cav.vehicle.apply_control(control) 
                     
                         # NOTE: add a throttle to test collision, only for testing !!!
-                        # acc_control = carla.VehicleControl(throttle=1.0)
-                        # single_cav.vehicle.apply_control(acc_control)
+                        acc_control = carla.VehicleControl(throttle=1.0)
+                        single_cav.vehicle.apply_control(acc_control)
 
                     # logic to maintain background vehicle speed
                     # this is specific to town06, used to reduce 90km/h to 50km/h
