@@ -213,11 +213,12 @@ def run_scenario(opt, scenario_params):
                         single_cav.vehicle.apply_control(brake_control)
 
                     else:
-                        # single_cav.vehicle.apply_control(control) 
+                        single_cav.vehicle.apply_control(control) 
                     
                         # NOTE: add a throttle to test collision, only for testing !!!
-                        acc_control = carla.VehicleControl(throttle=1.0)
-                        single_cav.vehicle.apply_control(acc_control)
+                        # acc_control = carla.VehicleControl(steer=0.008, 
+                        #                                    throttle=0.5)
+                        # single_cav.vehicle.apply_control(acc_control)
 
                     # logic to maintain background vehicle speed
                     # this is specific to town06, used to reduce 90km/h to 50km/h

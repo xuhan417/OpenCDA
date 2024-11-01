@@ -133,6 +133,7 @@ except ImportError:
     raise RuntimeError('cannot import numpy, make sure numpy package is installed')
 
 from multiprocessing import shared_memory
+from opencda.core.common.data_dumper_sim import SimDataDumper
 
 # ==============================================================================
 # -- Global functions ----------------------------------------------------------
@@ -976,6 +977,8 @@ class CollisionSensor(object):
 class LaneInvasionSensor(object):
     def __init__(self, parent_actor, hud):
         self.sensor = None
+        self.warning_text = ''
+        # self.is_crossed_lane = False
 
         # If the spawn object is not a vehicle, we cannot use the Lane Invasion Sensor
         if parent_actor.type_id.startswith("vehicle."):
@@ -995,8 +998,14 @@ class LaneInvasionSensor(object):
         if not self:
             return
         lane_types = set(x.type for x in event.crossed_lane_markings)
+        # if len(lane_types) > 0:
+        #     # mark lane invasion 
+        #     self.is_crossed_lane = True
+        # else:
+        #     self.is_crossed_lane = False
         text = ['%r' % str(x).split()[-1] for x in lane_types]
-        self.hud.notification('Crossed line %s' % ' and '.join(text))
+        self.warning_text = 'Crossed line %s' % ' and '.join(text)
+        self.hud.notification(self.warning_text)
 
 
 # ==============================================================================
@@ -1371,6 +1380,24 @@ def pygame_loop(input_queue, output_queue, shm_name, array_size):
             controller = KeyboardControl(world)
         
         clock = pygame.time.Clock()
+
+        # init data dumper 
+        # read ttc from opencda
+        ego_ttc = shared_array[0]
+        sim_time = count*0.05
+        ttc_thr = 3 #2.2, 4.6
+        sim_time_thr = 190
+        is_tailgate_warning = ego_ttc <= ttc_thr and sim_time >= sim_time_thr and args.display_warning
+        save_time = datetime.datetime.now()
+        time_string = save_time.strftime("%Y-%m-%d %H:%M:%S")
+        data_dumper = SimDataDumper(world.player,
+                                    sim_controller,
+                                    ego_ttc,
+                                    is_tailgate_warning,
+                                    world.lane_invasion_sensor,
+                                    world.collision_sensor,
+                                    time_string)
+
         while True:
             count += 1
             # init render clock
@@ -1378,11 +1405,11 @@ def pygame_loop(input_queue, output_queue, shm_name, array_size):
 
             # read ttc from opencda
             ego_ttc = shared_array[0]
-            # print(' !!!! Current ttc is: ' + str(ego_ttc))
             sim_time = count*0.05
             ttc_thr = 3 #2.2, 4.6
             sim_time_thr = 190
-            if ego_ttc <= ttc_thr and sim_time >= sim_time_thr and args.display_warning:
+            is_tailgate_warning = ego_ttc <= ttc_thr and sim_time >= sim_time_thr and args.display_warning
+            if is_tailgate_warning:
                 hud.trigger_warning(' WARNING: TAKEOVER VEHICLE', 2)
 
             # add warning for collision 
@@ -1442,6 +1469,9 @@ def pygame_loop(input_queue, output_queue, shm_name, array_size):
             # output_dict['is_tailgate'] = is_tailgate
             # send to main loop
             output_queue.put(output_dict)
+
+            # run data dumper save one step
+            data_dumper.run_step()
 
     finally:
         if original_settings:
