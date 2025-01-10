@@ -50,6 +50,7 @@ def run_scenario(opt, scenario_params):
     try:
         # init simulation tick count 
         tick = 0
+        running_tick = 0
         scenario_params = add_current_time(scenario_params)
 
         # create CAV world
@@ -96,12 +97,35 @@ def run_scenario(opt, scenario_params):
         pygame_process = ctx.Process(target=pygame_loop, 
                                      args=(input_queue, output_queue, shm.name, shared_array_size))
         
-        # update the warning setting 
-        opt.display_warning = True
         # put opt to input queue
         input_queue.put(opt)
         human_takeover = False
+        reduce_speed = False
 
+        # ------------- space key press event -------------
+        print("Press SPACE key to start the vehicle")
+        running = False
+
+        # Set up the Pygame window and clock
+        x = 2600
+        y = 600
+        os.environ['SDL_VIDEO_WINDOW_POS'] = "%d,%d" % (x,y)
+        pygame.init()
+
+        pause_screen = pygame.display.set_mode((700, 100))
+        # Set the font and text for the message
+        font = pygame.font.SysFont("monospace", 30)
+        text = font.render("Press SPACE to start vehicle movement", True, (255, 255, 255))
+
+        # Draw the message on the pause_screen
+        pause_screen.blit(text, (10, 10))
+        pygame.display.flip()
+
+        #set the tailgate onset time outside loop (scenario is 250s long)
+        #human_takeover_sec = 20 # hard code for debug purpose
+        #(120,140) in high speed, conflict before 4th light and traffic around (high complexity)
+        human_takeover_sec = int(random.uniform(140, 155)) # random float from 1 to 100 with uniform distribution
+        print(human_takeover_sec)
         # run steps
         while True:
             scenario_manager.tick()
@@ -121,18 +145,28 @@ def run_scenario(opt, scenario_params):
 
             # catch output queue
             if not output_queue.empty():
-                human_controls = output_queue.get()
-                human_takeover = human_controls['human_take_over']
-                # print('human control signal is: ' + str(human_controls))
+                output_dict = output_queue.get()
+                human_takeover = output_dict['human_take_over']
+                # print('output dict signal is: ' + str(output_dict))
 
-            # tailgate behavior
-            human_takeover_sec = random.uniform(1, 100) # random float from 1 to 100 with uniform distribution
-            human_takeover_sec = 5 # hard code for debug purpose
+            # pygame event 
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    sys.exit()
+                elif event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
+                    running = True
+
+            # ---------- tailgate behavior -------------
             sim_dt = scenario_params['world']['fixed_delta_seconds']
+            # factor to reduce the look-ahead dist
+            reducing_factor = 0.25 #0.35
+
+            # activate tailgate when reaches desired time
             if tick*sim_dt == human_takeover_sec:
                 print('[OpenCDA Side]: Reduce collision time, human takeover !!!')
                 # reduce safety distance 
-                single_cav = single_cav_list[0].agent.reduce_following_dist()
+                single_cav = single_cav_list[0].agent.reduce_following_dist(reducing_factor)
                 # check collision checker state 
                 new_collision_time = single_cav_list[0].agent._collision_check.time_ahead
                 print('New collision checker is enabled with: ' + \
@@ -150,20 +184,68 @@ def run_scenario(opt, scenario_params):
             single_cav = single_cav_list[0]
             single_cav.update_info()
             control = single_cav.run_step()
-            if human_takeover:
-                manual_control = carla.VehicleControl()
-                manual_control.throttle = human_controls['throttle']
-                manual_control.steer = human_controls['steer']
-                manual_control.brake = human_controls['brake']
-                manual_control.reverse = human_controls['reverse']
-                single_cav.vehicle.apply_control(manual_control)
-            elif single_cav.agent.is_close_to_destination():
-                print('Simulation is Over. ')
+
+            # only proceed is running is true
+            if running:
+                # hault the sim if collides 
+                if output_dict['is_collided']:
+                    # stop all vehicles 
+                    brake_control = carla.VehicleControl(brake=1.0)
+                    single_cav.vehicle.apply_control(brake_control)
+                    for v in bg_veh_list:
+                        v.set_autopilot(enabled=False)
+                        v.apply_control(brake_control)
+
+                # only continue if no collision happens
+                else:
+                    # revert automatic control 
+                    for v in bg_veh_list:
+                        v.set_autopilot(True)
+                    if human_takeover:
+                        manual_control = carla.VehicleControl()
+                        manual_control.throttle = output_dict['throttle']
+                        manual_control.steer = output_dict['steer']
+                        manual_control.brake = output_dict['brake']
+                        manual_control.reverse = output_dict['reverse']
+                        single_cav.vehicle.apply_control(manual_control)
+                    elif single_cav.agent.is_close_to_destination():
+                        print('Simulation is Over. ')
+                        brake_control = carla.VehicleControl(brake=1.0,)
+                        single_cav.vehicle.apply_control(brake_control)
+
+                    else:
+                        single_cav.vehicle.apply_control(control) 
+                    
+                        # NOTE: add a throttle to test collision, only for testing !!!
+                        # acc_control = carla.VehicleControl(steer=0.008, 
+                        #                                    throttle=0.5)
+                        # single_cav.vehicle.apply_control(acc_control)
+
+                    # logic to maintain background vehicle speed
+                    # this is specific to town06, used to reduce 90km/h to 50km/h
+                    leading_v = bg_veh_list[0]
+                    trailing_v = bg_veh_list[-1]
+                    speed_limit = max(leading_v.get_speed_limit(), \
+                                      trailing_v.get_speed_limit()) 
+                    if speed_limit >= 75 and not reduce_speed:
+                        print('set reduce speed to true.')
+                        reduce_speed = True
+                    if reduce_speed:
+                        #print('reduce speed limit to all TM to 35%')
+                        # traffic_manager.global_percentage_speed_difference(90)
+                        for v in bg_veh_list:
+                            traffic_manager.vehicle_percentage_speed_difference(v, 10)
+                        tm_spd = leading_v.get_velocity()
+                        tm_kmh = math.sqrt((tm_spd.x**2 + tm_spd.y**2 + tm_spd.z**2))*3.6
+                        #print('The current tm speed is: ' + str(tm_kmh))
+
+            # hold all vehicle if not running yet 
+            else:
                 brake_control = carla.VehicleControl(brake=1.0)
                 single_cav.vehicle.apply_control(brake_control)
-
-            else:
-                single_cav.vehicle.apply_control(control)
+                for v in bg_veh_list:
+                    v.set_autopilot(enabled=False)
+                    v.apply_control(brake_control)
 
     finally:
         input_queue.put(None)  # Signal the GPU process to terminate

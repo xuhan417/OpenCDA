@@ -1385,8 +1385,8 @@ def pygame_loop(input_queue, output_queue, shm_name, array_size):
         # read ttc from opencda
         ego_ttc = shared_array[0]
         sim_time = count*0.05
-        ttc_thr = 3 #2.2, 4.6
-        sim_time_thr = 190
+        ttc_thr = 3.5 #2.2, 4.6
+        sim_time_thr = 40
         is_tailgate_warning = ego_ttc <= ttc_thr and sim_time >= sim_time_thr and args.display_warning
         save_time = datetime.datetime.now()
         time_string = save_time.strftime("%Y-%m-%d %H:%M:%S")
@@ -1406,8 +1406,8 @@ def pygame_loop(input_queue, output_queue, shm_name, array_size):
             # read ttc from opencda
             ego_ttc = shared_array[0]
             sim_time = count*0.05
-            ttc_thr = 3 #2.2, 4.6
-            sim_time_thr = 190
+            ttc_thr = 3.5 #2.2, 4.6
+            sim_time_thr = 40
             is_tailgate_warning = ego_ttc <= ttc_thr and sim_time >= sim_time_thr and args.display_warning
             if is_tailgate_warning:
                 hud.trigger_warning(' WARNING: TAKEOVER VEHICLE', 2)
