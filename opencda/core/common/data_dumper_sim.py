@@ -54,13 +54,17 @@ class SimDataDumper(object):
 
         self.count = 0
 
-    def run_step(self, reduce_frequency=False):
+    def run_step(self, ego_ttc, is_tailgate_warning, reduce_frequency=False):
         """
         Dump data at running time.
 
         """
         # increment self count 
         self.count += 1
+
+        # update ttc and driver warning 
+        self.ego_ttc = ego_ttc
+        self.is_tailgate_warning = is_tailgate_warning
 
         # 10hz
         if self.count % 2 != 0 and reduce_frequency:
