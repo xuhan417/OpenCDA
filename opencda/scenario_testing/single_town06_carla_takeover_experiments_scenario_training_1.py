@@ -97,6 +97,9 @@ def run_scenario(opt, scenario_params):
         pygame_process = ctx.Process(target=pygame_loop, 
                                      args=(input_queue, output_queue, shm.name, shared_array_size))
         
+        # this is a enabled WARNING scenario, display_warning --> true 
+        opt.display_warning = True 
+
         # put opt to input queue
         input_queue.put(opt)
         human_takeover = False

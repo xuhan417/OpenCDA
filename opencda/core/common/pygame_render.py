@@ -1386,8 +1386,11 @@ def pygame_loop(input_queue, output_queue, shm_name, array_size):
         ego_ttc = shared_array[0]
         sim_time = count*0.05
         ttc_thr = 3.5 #2.2, 4.6
-        sim_time_thr = 5
-        is_tailgate_warning = ego_ttc <= ttc_thr and sim_time >= sim_time_thr and args.display_warning
+
+        # read threshold from args instead of hardcode
+        # sim_time_thr = 250
+        # backup is_tailgate_warning = ego_ttc <= ttc_thr and sim_time >= sim_time_thr and args.display_warning
+        is_tailgate_warning = ego_ttc <= ttc_thr and sim_time >= args.sim_time_thr and args.display_warning
         save_time = datetime.datetime.now()
         time_string = save_time.strftime("%Y-%m-%d %H:%M:%S")
         data_dumper = SimDataDumper(world.player,
@@ -1407,8 +1410,12 @@ def pygame_loop(input_queue, output_queue, shm_name, array_size):
             ego_ttc = shared_array[0]
             sim_time = count*0.05
             ttc_thr = 3.5 #2.2, 4.6
-            sim_time_thr = 5
-            is_tailgate_warning = ego_ttc <= ttc_thr and sim_time >= sim_time_thr and args.display_warning
+
+            # read threshold from args instead of hardcode
+            # sim_time_thr = 250
+            # backup is_tailgate_warning = ego_ttc <= ttc_thr and sim_time >= sim_time_thr and args.display_warning
+            is_tailgate_warning = ego_ttc <= ttc_thr and sim_time >= args.sim_time_thr and args.display_warning
+            
             if is_tailgate_warning:
                 hud.trigger_warning(' WARNING: TAKEOVER VEHICLE', 2)
 
