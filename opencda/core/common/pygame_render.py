@@ -1385,7 +1385,7 @@ def pygame_loop(input_queue, output_queue, shm_name, array_size):
         # read ttc from opencda
         ego_ttc = shared_array[0]
         sim_time = count*0.05
-        ttc_thr = 3.5 #2.2, 4.6
+        ttc_thr = 4.5 #4 (tests 2-8), 3.5 (test 1), 2.2, 4.6
 
         # read threshold from args instead of hardcode
         # sim_time_thr = 250

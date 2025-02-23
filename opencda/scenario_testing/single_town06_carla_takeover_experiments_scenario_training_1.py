@@ -127,7 +127,7 @@ def run_scenario(opt, scenario_params):
         #set the tailgate onset time outside loop (scenario is 250s long)
         #human_takeover_sec = 20 # hard code for debug purpose
         #(120,140) in high speed, conflict before 4th light and traffic around (high complexity)
-        human_takeover_sec = int(random.uniform(250, 300)) # random float from 1 to 100 with uniform distribution
+        human_takeover_sec = 500 # random float from 1 to 100 with uniform distribution (no failure = 500)
         print(human_takeover_sec)
         # run steps
         while True:
