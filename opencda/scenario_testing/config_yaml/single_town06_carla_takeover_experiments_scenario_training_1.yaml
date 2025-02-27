@@ -25,7 +25,7 @@ vehicle_base:
         visualize: false
   behavior:
     max_speed: 65 # maximum speed, km/h
-    safety_time: 6 # ttc safety thresholding for decreasing speed
+    safety_time: 7.1 # ttc safety thresholding for decreasing speed
     ignore_traffic_light: false # whether to ignore traffic light
     collision_time_ahead: 1.5 # used for collision checking
     overtake_allowed: false # whether overtake allowed, typically false for platoon leader
